@@ -1,0 +1,186 @@
+// ================================
+// ULTRA ANTI‑RECOIL & AIMLOCK PAC
+// ================================
+
+// -------------------------------
+// CẤU HÌNH RECOIL SYSTEM (FULL)
+// -------------------------------
+var AntiRecoilStabilityConfig = {
+    VerticalRecoil_Suppression: 999,
+    HorizontalShake_Reduction: 999,
+    RealTimeGun_StabilityControl: 999,
+    DynamicRecoil_FeedbackMod: 999,
+    AdvancedShooting_Balance: 999,
+    InteractiveWeapon_Response: 999,
+    RealTimeCrosshair_Anchor: 999,
+    AutoRecoil_AdjustSystem: 999,
+    StabilizedFiringRate_Control: 999,
+    QuickRecoil_ResetOptions: 999,
+    SmartRecoil_Prediction: 999,
+    MicroRecoil_Smoothing: 999,
+    DynamicKickback_Compensation: 999,
+    BulletPattern_AutoCorrect: 999,
+    AntiDrift_RecoilControl: 999,
+    RecoilHeat_Response: 999,
+    WeaponType_AutoTune: 999,
+    BurstFire_Stabilizer: 999,
+    SmartCrosshair_CenterPull: 999,
+    MultiDirection_RecoilScaling: 999,
+    SensitivityRecoil_AutoAdjust: 999,
+    MotionTracking_RecoilSync: 999,
+    RapidFire_AntiClimb: 999,
+    AdaptiveGunKick_Recovery: 999,
+    WeaponGrip_ForceBalance: 999
+};
+
+// -------------------------------
+// DANH SÁCH DOMAIN FREE FIRE
+// -------------------------------
+var FF_DOMAINS = [
+    "ff.garena.com",
+    "freefire.garena.com",
+    "booyah.garena.com",
+    "garena.com",
+    "freefiremobile.com",
+    "cdn.freefiremobile.com",
+    "download.freefiremobile.com",
+    "ff.garena.vn"
+];
+
+// -------------------------------
+// DANH SÁCH PROXY
+// -------------------------------
+var PROXY1 = "PROXY 139.59.230.8:8069";
+var PROXY2 = "PROXY 82.26.74.193:9002";
+var PROXY3 = "PROXY 109.199.104.216:2025";
+var PROXY4 = "PROXY 109.199.104.216:2027";
+var PROXY_CHAIN = PROXY1 + "; " + PROXY2 + "; " + PROXY3 + "; " + PROXY4 + "; DIRECT";
+var DIRECT = "DIRECT";
+
+// -------------------------------
+// HỆ THỐNG AIM & ADAPTIVE
+// -------------------------------
+var AdaptiveAimSystem = {
+    LockMode: "Head",
+    LockEnemy: true,
+    AutoAdjustRecoil: true,
+    HeadshotBias: 9999,
+    NoGravityRange: 9999,
+    StickToHead: true,
+    AntiDrop: true,
+    PredictiveAim: true
+};
+
+var AimLockSystem = {
+    EnableAimLock: true,
+    AimLockFOV: 3.0,
+    AimPriority: "HEAD",
+
+    LockStrength: 2.25,
+    HardLockPower: 2.6,
+    DragLockForce: 1.85,
+
+    SnapEnable: true,
+    SnapSpeed: 1.90,
+    SnapRange: 360.0,
+
+    MicroCorrect: true,
+    MicroCorrectStrength: 1.35,
+
+    SmoothEnable: true,
+    SmoothFactor: 0.72,
+    VerticalSmoothBoost: 1.35,
+
+    DistanceAdaptive: true,
+    CloseRangeBoost: 1.40,
+    MidRangeBoost: 1.15,
+    LongRangeNerf: 0.90,
+
+    AntiOvershoot: true,
+    AntiOvershootFactor: 1.25,
+
+    AntiShake: true,
+    AntiShakeMin: 0.0017,
+    AntiShakeMax: 0.075,
+
+    UseHeadFixSystem: true,
+    HeadTrackBias: 1.20,
+
+    AutoFire: true,
+    AutoFireRange: 3.0,
+    AutoFireDelay: 18,
+
+    applyAimLock: function(target, cameraDir, distance) {
+        if (!this.EnableAimLock || !target) return cameraDir;
+
+        let aimVector = target.sub(cameraDir);
+
+        if (this.AimPriority === "HEAD" && this.UseHeadFixSystem && target.head) {
+            aimVector = target.head.sub(cameraDir).mul(this.HeadTrackBias);
+        }
+
+        if (this.DistanceAdaptive) {
+            if (distance < 15) aimVector = aimVector.mul(this.CloseRangeBoost);
+            else if (distance < 40) aimVector = aimVector.mul(this.MidRangeBoost);
+            else aimVector = aimVector.mul(this.LongRangeNerf);
+        }
+
+        if (this.MicroCorrect) aimVector = aimVector.mul(this.MicroCorrectStrength);
+
+        if (this.SnapEnable) {
+            const angle = aimVector.angle();
+            if (angle <= this.SnapRange) aimVector = aimVector.mul(this.SnapSpeed);
+        }
+
+        if (aimVector.length() < 0.022) aimVector = aimVector.mul(this.HardLockPower);
+
+        if (this.SmoothEnable) {
+            aimVector.x *= this.SmoothFactor;
+            aimVector.y *= this.SmoothFactor * this.VerticalSmoothBoost;
+        }
+
+        if (this.AntiOvershoot) {
+            aimVector.x = Math.min(aimVector.x, this.AntiOvershootFactor);
+            aimVector.y = Math.min(aimVector.y, this.AntiOvershootFactor);
+        }
+
+        aimVector.x = Math.max(Math.min(aimVector.x, this.AntiShakeMax), -this.AntiShakeMax);
+        aimVector.y = Math.max(Math.min(aimVector.y, this.AntiShakeMax), -this.AntiShakeMax);
+
+        return aimVector;
+    }
+};
+
+// -------------------------------
+// HÀM TÍNH TOÁN ẢNH HƯỞNG RECOIL
+// -------------------------------
+function computeRecoilImpact() {
+    var sum = 0;
+    for (var key in AntiRecoilStabilityConfig) {
+        if (AntiRecoilStabilityConfig.hasOwnProperty(key)) sum += AntiRecoilStabilityConfig[key];
+    }
+    return sum;
+}
+
+// -------------------------------
+// KIỂM TRA DOMAIN FREE FIRE
+// -------------------------------
+function isFreeFireDomain(host) {
+    host = host.toLowerCase();
+    for (var i = 0; i < FF_DOMAINS.length; i++) {
+        if (dnsDomainIs(host, FF_DOMAINS[i])) return true;
+    }
+    return false;
+}
+
+// -------------------------------
+// HÀM CHÍNH PAC
+// -------------------------------
+function FindProxyForURL(url, host) {
+    var recoilScore = computeRecoilImpact();
+    var isFF = isFreeFireDomain(host);
+
+    // Logic recoil + aim có thể dùng ở đây nếu muốn
+    // Nhưng luôn return DIRECT
+    return DIRECT;
+}
