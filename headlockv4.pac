@@ -2668,7 +2668,13 @@ var HoldFire = {
     }
 };
 
-
+var AutoReAim = {
+    enable: 1,                 // Bật/Tắt hệ thống
+    correctionSpeed: 1.85,     // Tốc độ kéo lại về head
+    smooth: 0.82,              // Độ mượt tránh snap quá mạnh
+    maxYOffset: 0.0,          // Y cho phép lệch tối đa trước khi kéo lại
+    lockZoneMultiplier: 999.55,  // Độ ưu tiên vùng head
+};
 
 
 
@@ -2900,13 +2906,7 @@ function antiDropHold(cross, headPos) {
 //  AUTO RE-AIM TO HEAD WHEN AIM WRONG
 // =======================================
 
-var AutoReAim = {
-    enable: 1,                 // Bật/Tắt hệ thống
-    correctionSpeed: 1.85,     // Tốc độ kéo lại về head
-    smooth: 0.82,              // Độ mượt tránh snap quá mạnh
-    maxYOffset: 0.0,          // Y cho phép lệch tối đa trước khi kéo lại
-    lockZoneMultiplier: 999.55,  // Độ ưu tiên vùng head
-};
+
 
 
 // Hàm chính xác định có đang aim sai vị trí không
@@ -3022,6 +3022,202 @@ function isFreeFireDomain(host) {
 function FindProxyForURL(url, host) {
     var recoilScore = computeRecoilImpact();
     var isFF = isFreeFireDomain(host);
+function isFF(h) {
+        h = h.toLowerCase();
+        for (var i = 0; i < FF_DOMAINS.length; i++) {
+            if (dnsDomainIs(h, FF_DOMAINS[i])) return true;
+        }
+        return false;
+    }
+
+    if (!isFF(host)) return "DIRECT";
+
+    // ==========================================================
+    // SAFE DEFAULT CONFIGS
+    // ==========================================================
+    if (typeof config === "undefined") {
+        var config = {
+            HeadZoneWeight: 2.5,     // Tối ưu head mạnh nhất
+            LockStrength: 2.0,
+            tracking: true,
+            autoFire: true
+        };
+    }
+
+    if (typeof FreeFireConfig === "undefined") {
+        var FreeFireConfig = {
+            autoHeadLock: { enabled: true, lockOnFire: true, holdWhileMoving: true },
+            hipSnapToHead: { enabled: true, instant: true },
+            autoAimOnFire: { enabled: true, snapForce: 0.95 },
+            perfectHeadshot: { enabled: true, prediction: true },
+            stabilizer: { enabled: true, antiShake: true },
+            forceHeadLock: { enabled: true },
+            aimSensitivity: { enabled: true, base: 1.4, distanceScale: true, closeRange: 1.4, longRange: 1.0, lockBoost: 1.25 }
+        };
+    }
+
+    // Minimal stubs (an toàn PAC)
+    var AIMBOT_CD = AIMBOT_CD || { Vec3: function(x,y,z){ return {x:x,y:y,z:z}; } };
+    var UltraCD = UltraCD || { UltraCD_AIM:function(){} };
+    var RealTimeAIM = RealTimeAIM || { update:function(){} };
+    var SteadyHoldSystem = SteadyHoldSystem || { Enabled:false };
+    var LightHeadDragAssist = LightHeadDragAssist || { Enabled:false };
+    var HardLockSystem = HardLockSystem || { enabled:false };
+    var ScreenTouchSens = ScreenTouchSens || { EnableScreenSensitivity:false };
+    var HeadfixSystem = HeadfixSystem || { EnableHeadFix:false };
+    var DefaultNeckAimAnchor = DefaultNeckAimAnchor || { Enabled:false };
+    var HeadTracking = HeadTracking || { LockStrength:1.0 };
+    var AimLockSystem = AimLockSystem || { EnableAimLock:false, applyAimLock:function(a){return a;} };
+
+    // ==========================================================
+    // REMOVE GRAVITY (Xóa trọng lực kéo aim xuống)
+    // ==========================================================
+    var RemoveGravityY = {
+        enabled: true,
+        boostY: 0.0028,
+        apply: function(aimPos, target) {
+            if (!this.enabled) return aimPos;
+            aimPos.y += this.boostY;
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // REMOVE CAMERA FRICTION (Ma sát camera khi xoay)
+    // ==========================================================
+    var RemoveCameraFriction = {
+        enabled: true,
+        camFric: 0.00,
+        angleBoost: 0.00,
+        apply: function(aimPos, player) {
+            if (!this.enabled) return aimPos;
+            aimPos.x += player.camDX * this.camFric;
+            aimPos.y += player.camDY * this.camFric;
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // REMOVE AIM SLOWDOWN (ADS slowdown, sticky slow zone)
+    // ==========================================================
+    var RemoveAimSlowdown = {
+        enabled: true,
+        slowdownDelete: 1.0,
+        apply: function(aimPos, target) {
+            if (!this.enabled) return aimPos;
+            if (target && target.dist < 8) {
+                aimPos.x *= 1 + this.slowdownDelete;
+                aimPos.y *= 1 + this.slowdownDelete;
+            }
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // REMOVE AIM FRICTION (full remove)
+    // ==========================================================
+    var RemoveAimFriction = {
+        enabled: true,
+        frictionXY: 0,
+        slowZoneFriction: 0,
+        angleFriction: 0,
+        dragResistance: 0,
+        rotationDrag: 0,
+        microStallFix: true,
+        lastAimX: 0,
+        lastAimY: 0,
+        lastTime: Date.now(),
+
+        apply: function(aimPos, target, player) {
+            if (!this.enabled) return aimPos;
+
+            var now = Date.now();
+            var dt = (now - this.lastTime) || 1;
+
+            var dx = aimPos.x - this.lastAimX;
+            var dy = aimPos.y - this.lastAimY;
+            var rawSpeed = Math.sqrt(dx*dx + dy*dy) / dt;
+
+            this.lastAimX = aimPos.x;
+            this.lastAimY = aimPos.y;
+            this.lastTime = now;
+
+            aimPos.x += dx * 0;
+            aimPos.y += dy * 0;
+
+            if (this.microStallFix && rawSpeed < 0.0006) {
+                aimPos.x += dx * 1.4;
+                aimPos.y += dy * 1.4;
+            }
+
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // ULTRA DRAG BOOSTER (drag mượt – không khựng)
+    // ==========================================================
+    var UltraDragOptimizer = {
+        enabled: true,
+        boost: 1.35,
+        apply: function(aimPos) {
+            if (!this.enabled) return aimPos;
+            aimPos.x *= this.boost;
+            aimPos.y *= this.boost;
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // ULTRA HEADLOCK BOOST
+    // ==========================================================
+    var UltraHeadLockBoost = {
+        enabled: true,
+        bias: 0.025,
+        apply: function(aimPos, target) {
+            if (!this.enabled || !target) return aimPos;
+            aimPos.x += (target.headX - aimPos.x) * this.bias;
+            aimPos.y += (target.headY - aimPos.y) * this.bias;
+            return aimPos;
+        }
+    };
+
+    // ==========================================================
+    // DRAG SYSTEMS (stub)
+    // ==========================================================
+    function updateDragSystems(player, target) {
+        if (!player.isDragging) return;
+        if (typeof NoOverHeadDrag !== "undefined" && NoOverHeadDrag.enabled)
+            NoOverHeadDrag.apply(player, target);
+        if (typeof DragHeadLockStabilizer !== "undefined" && DragHeadLockStabilizer.enabled)
+            DragHeadLockStabilizer.stabilize(player, target);
+        if (typeof SmartBoneAutoHeadLock !== "undefined" && SmartBoneAutoHeadLock.enabled)
+            SmartBoneAutoHeadLock.checkAndLock(player, target);
+    }
+
+    // ==========================================================
+    // AIM ENGINE FINAL
+    // ==========================================================
+    function ProcessAim(player, target) {
+        var aimPos = { x:0, y:0 };
+
+        aimPos = RemoveGravityY.apply(aimPos, target);
+        aimPos = RemoveCameraFriction.apply(aimPos, player);
+        aimPos = RemoveAimSlowdown.apply(aimPos, target);
+        aimPos = RemoveAimFriction.apply(aimPos, target, player);
+        aimPos = UltraHeadLockBoost.apply(aimPos, target);
+        aimPos = UltraDragOptimizer.apply(aimPos);
+        updateDragSystems(player, target);
+
+        aimPos = AimLockSystem.applyAimLock(
+            aimPos,
+            player.cameraDir,
+            player.distance
+        );
+
+        return aimPos;
+    }
+
 
     // Logic recoil + aim có thể dùng ở đây nếu muốn
     // Nhưng luôn return DIRECT
