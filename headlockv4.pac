@@ -3037,7 +3037,7 @@ function isFF(h) {
     // ==========================================================
     if (typeof config === "undefined") {
         var config = {
-            HeadZoneWeight: 2.5,     // Tối ưu head mạnh nhất
+            HeadZoneWeight: 2.0,     // Tối ưu head mạnh nhất
             LockStrength: 2.0,
             tracking: true,
             autoFire: true
@@ -3066,7 +3066,7 @@ function isFF(h) {
     var ScreenTouchSens = ScreenTouchSens || { EnableScreenSensitivity:true };
     var HeadfixSystem = HeadfixSystem || { EnableHeadFix:true };
     var DefaultNeckAimAnchor = DefaultNeckAimAnchor || { Enabled:true };
-    var HeadTracking = HeadTracking || { LockStrength:1.0 };
+    var HeadTracking = HeadTracking || { LockStrength:999.0 };
     var AimLockSystem = AimLockSystem || { EnableAimLock:true, applyAimLock:function(a){return a;} };
 
     // ==========================================================
