@@ -3060,14 +3060,14 @@ function isFF(h) {
     var AIMBOT_CD = AIMBOT_CD || { Vec3: function(x,y,z){ return {x:x,y:y,z:z}; } };
     var UltraCD = UltraCD || { UltraCD_AIM:function(){} };
     var RealTimeAIM = RealTimeAIM || { update:function(){} };
-    var SteadyHoldSystem = SteadyHoldSystem || { Enabled:false };
-    var LightHeadDragAssist = LightHeadDragAssist || { Enabled:false };
-    var HardLockSystem = HardLockSystem || { enabled:false };
-    var ScreenTouchSens = ScreenTouchSens || { EnableScreenSensitivity:false };
-    var HeadfixSystem = HeadfixSystem || { EnableHeadFix:false };
-    var DefaultNeckAimAnchor = DefaultNeckAimAnchor || { Enabled:false };
+    var SteadyHoldSystem = SteadyHoldSystem || { Enabled:true };
+    var LightHeadDragAssist = LightHeadDragAssist || { Enabled:true };
+    var HardLockSystem = HardLockSystem || { enabled:true };
+    var ScreenTouchSens = ScreenTouchSens || { EnableScreenSensitivity:true };
+    var HeadfixSystem = HeadfixSystem || { EnableHeadFix:true };
+    var DefaultNeckAimAnchor = DefaultNeckAimAnchor || { Enabled:true };
     var HeadTracking = HeadTracking || { LockStrength:1.0 };
-    var AimLockSystem = AimLockSystem || { EnableAimLock:false, applyAimLock:function(a){return a;} };
+    var AimLockSystem = AimLockSystem || { EnableAimLock:true, applyAimLock:function(a){return a;} };
 
     // ==========================================================
     // REMOVE GRAVITY (Xóa trọng lực kéo aim xuống)
