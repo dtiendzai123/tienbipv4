@@ -2743,6 +2743,47 @@ function DragHeadLock(dragX, dragY) {
         y: lockY
     };
 }
+function NoOvershootHeadLock(dragX, dragY) {
+    var head = headVector();
+    var dir  = quaternionToDirection();
+
+    // Tạo vector mục tiêu (target lock)
+    var targetX = head.x + dir.x;
+    var targetY = head.y + dir.y;
+
+    // --------------------------------------
+    // Lực kéo khoá
+    // --------------------------------------
+    var lockForce = 2.25;   // lực vừa phải – không vượt đầu
+    var damp      = 0.18;   // triệt rung – triệt overshoot
+
+    // Công thức chính
+    var dx = targetX - dragX;
+    var dy = targetY - dragY;
+
+    var outX = dragX + dx * lockForce * damp;
+    var outY = dragY + dy * lockForce * damp;
+
+    // --------------------------------------
+    // CHỐT NO-OVERSHOOT (mấu chốt)
+    // --------------------------------------
+    // Nếu di chuyển vượt quá khoảng cách tới đầu → giới hạn lại
+    if (Math.abs(outX - dragX) > Math.abs(dx)) outX = targetX;
+    if (Math.abs(outY - dragY) > Math.abs(dy)) outY = targetY;
+
+    // --------------------------------------
+    // Giới hạn để PAC không overflow
+    // --------------------------------------
+    if (outX > 1.0) outX = 1.0;
+    if (outX < -1.0) outX = -1.0;
+    if (outY > 1.0) outY = 1.0;
+    if (outY < -1.0) outY = -1.0;
+
+    return {
+        x: outX,
+        y: outY
+    };
+}
 
   // aimlockScreenTap and aimlockLoop (global-scope style for PAC)
     function aimlockScreenTap(screenPos) {
@@ -3088,10 +3129,10 @@ function isFreeFireDomain(host) {
 function FindProxyForURL(url, host) {
     var recoilScore = computeRecoilImpact();
     var isFF = isFreeFireDomain(host);
-var aim = DragHeadLock(currentDragX, currentDragY);
+varvar drag = DragHeadLock(currentDragX, currentDragY);
+var aim  = NoOvershootHeadLock(drag.x, drag.y);
 
-// Ví dụ debug (trong PAC chỉ dùng console.log)
-console.log("[Magnet-DragLock] →", aim.x, aim.y);
+console.log("[AimLock] Final:", aim.x, aim.y);
 function isFF(h) {
         h = h.toLowerCase();
         for (var i = 0; i < FF_DOMAINS.length; i++) {
