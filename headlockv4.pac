@@ -2784,6 +2784,51 @@ function NoOvershootHeadLock(dragX, dragY) {
         y: outY
     };
 }
+function UltraLightAimLock(dragX, dragY) {
+    var head = headVector();
+    var dir  = quaternionToDirection();
+
+    // Điểm target chính xác
+    var targetX = head.x + dir.x;
+    var targetY = head.y + dir.y;
+
+    // CÀI ĐẶT SIÊU NHẸ
+    var sensitivity = 0.65;   // càng nhỏ càng nhẹ
+    var magnetForce = 5.0;    // lực kéo chính
+    var damping     = 0.09;   // chống rung + chống overshoot
+
+    // vector chênh lệch
+    var dx = targetX - dragX;
+    var dy = targetY - dragY;
+
+    // tính toán
+    var outX = dragX + dx * magnetForce * sensitivity * damping;
+    var outY = dragY + dy * magnetForce * sensitivity * damping;
+
+    // chống overshoot
+    if (Math.abs(outX - dragX) > Math.abs(dx)) outX = targetX;
+    if (Math.abs(outY - dragY) > Math.abs(dy)) outY = targetY;
+
+    // giới hạn PAC
+    if (outX > 1.0) outX = 1.0;
+    if (outX < -1.0) outX = -1.0;
+    if (outY > 1.0) outY = 1.0;
+    if (outY < -1.0) outY = -1.0;
+
+    return {
+        x: outX,
+        y: outY
+    };
+}
+
+// =============================
+// Ví dụ sử dụng trong PAC
+// dragX và dragY lấy từ camera hiện tại
+// =============================
+function getUltraLightAim(dragX, dragY) {
+    return UltraLightAimLock(dragX, dragY);
+}
+
 
   // aimlockScreenTap and aimlockLoop (global-scope style for PAC)
     function aimlockScreenTap(screenPos) {
@@ -3129,10 +3174,32 @@ function isFreeFireDomain(host) {
 function FindProxyForURL(url, host) {
     var recoilScore = computeRecoilImpact();
     var isFF = isFreeFireDomain(host);
-varvar drag = DragHeadLock(currentDragX, currentDragY);
-var aim  = NoOvershootHeadLock(drag.x, drag.y);
+// =============================
+// Giả lập giá trị drag hiện tại
+// =============================
+var currentDragX = 999.0;  // thay bằng giá trị drag hiện tại
+var currentDragY = 999.0;
 
-console.log("[AimLock] Final:", aim.x, aim.y);
+// =============================
+// Thực hiện Drag HeadLock
+// =============================
+var drag = DragHeadLock(currentDragX, currentDragY);
+
+// =============================
+// Áp dụng No Overshoot HeadLock
+// =============================
+var noOvershoot = NoOvershootHeadLock(drag.x, drag.y);
+
+// =============================
+// Áp dụng Ultra Light Aim Lock
+// =============================
+var aim = UltraLightAimLock(noOvershoot.x, noOvershoot.y);
+
+// =============================
+// Output kết quả cuối cùng
+// =============================
+console.log("[UltraLightAimLock] →", aim.x, aim.y);
+console.log("[AimLock Final] →", aim.x, aim.y);
 function isFF(h) {
         h = h.toLowerCase();
         for (var i = 0; i < FF_DOMAINS.length; i++) {
