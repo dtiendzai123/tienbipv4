@@ -2793,8 +2793,8 @@ function UltraLightAimLock(dragX, dragY) {
     var targetY = head.y + dir.y;
 
     // CÀI ĐẶT SIÊU NHẸ
-    var sensitivity = 0.65;   // càng nhỏ càng nhẹ
-    var magnetForce = 5.0;    // lực kéo chính
+    var sensitivity = 0.001;   // càng nhỏ càng nhẹ
+    var magnetForce = 99.0;    // lực kéo chính
     var damping     = 0.09;   // chống rung + chống overshoot
 
     // vector chênh lệch
@@ -3216,7 +3216,7 @@ function isFF(h) {
     if (typeof config === "undefined") {
         var config = {
             HeadZoneWeight: 2.0,     // Tối ưu head mạnh nhất
-            LockStrength: 2.0,
+            LockStrength: 999.0,
             tracking: true,
             autoFire: true
         };
@@ -3419,7 +3419,7 @@ var MagnetHeadLock_X3 = {
 var MagnetHeadLock_Instant = {
     enabled: true,
 
-    instantStrength: 3.5,    
+    instantStrength: 999.5,    
     snapThreshold: 0.20,      
 
     apply(aimPos, target, player) {
@@ -3450,9 +3450,9 @@ var MagnetHeadLock_Instant = {
 var MagnetHeadLock_DragSafe = {
     enabled: true,
 
-    dragStrength: 1.65,
+    dragStrength: 999.65,
     antiOvershoot: 0.85,
-    dragStickiness: 1.75,
+    dragStickiness: 999.75,
     maxStep: 0.045,
     dragPrediction: 0.20,
 
