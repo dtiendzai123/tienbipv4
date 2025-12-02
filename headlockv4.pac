@@ -2716,6 +2716,20 @@ function quaternionToDirection() {
         z: 1 - 2 * (x*x + y*y)
     };
 }
+function InstantHeadLock(dragX, dragY) {
+    var head = headVector();
+    var dir  = quaternionToDirection();
+
+    // Điểm target chính xác
+    var targetX = head.x + dir.x;
+    var targetY = head.y + dir.y;
+
+    // Instant snap → bỏ qua mọi damping, overshoot, smooth
+    return {
+        x: targetX,
+        y: targetY
+    };
+}
 
 // ===============================================
 // DRAG HEADLOCK – KHÓA TÂM KHI DRAG LÊN
@@ -3194,7 +3208,9 @@ var noOvershoot = NoOvershootHeadLock(drag.x, drag.y);
 // Áp dụng Ultra Light Aim Lock
 // =============================
 var aim = UltraLightAimLock(noOvershoot.x, noOvershoot.y);
+var InstantHeadLock = InstantHeadLock(currentDragX, currentDragY);
 
+console.log("[InstantHeadLock] →", aim.x, aim.y);
 // =============================
 // Output kết quả cuối cùng
 // =============================
