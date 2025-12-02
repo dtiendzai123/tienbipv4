@@ -3159,7 +3159,7 @@ function isFF(h) {
     // ==========================================================
     var UltraDragOptimizer = {
         enabled: true,
-        boost: 1.35,
+        boost: 999.35,
         apply: function(aimPos) {
             if (!this.enabled) return aimPos;
             aimPos.x *= this.boost;
@@ -3181,7 +3181,156 @@ function isFF(h) {
             return aimPos;
         }
     };
+// =======================================================================
+// 🔥 MAGNET HEADLOCK PACK — FULL COMBO 300% + INSTANT + DRAGSAFE
+// =======================================================================
 
+// =====================================================
+// 1) MagnetHeadLock_X3 — Lực hút 300% cực mạnh nhưng vẫn mượt
+// =====================================================
+var MagnetHeadLock_X3 = {
+    enabled: true,
+
+    magnetStrength: 5.25,              // lực hút x3
+    closeRangeBoost: 6.75,             // boost khi rất gần đầu
+    smoothFactor: 0.35,
+    snapThreshold: 0.045,
+    predictionFactor: 0.45,
+    distanceScale: true,
+
+    apply(aimPos, target, player) {
+        if (!this.enabled || !target || !target.headPos) return aimPos;
+
+        let head = target.headPos;
+        let dx = head.x - aimPos.x;
+        let dy = head.y - aimPos.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < 0.06) {
+            dx *= this.closeRangeBoost;
+            dy *= this.closeRangeBoost;
+        }
+
+        if (this.distanceScale && target.distance) {
+            let scale = Math.min(3.5, 1 + (target.distance / 20));
+            dx *= scale;
+            dy *= scale;
+        }
+
+        if (dist < this.snapThreshold) {
+            dx *= 4.0;
+            dy *= 4.0;
+        }
+
+        if (target.velocity) {
+            dx += target.velocity.x * this.predictionFactor;
+            dy += target.velocity.y * this.predictionFactor;
+        }
+
+        aimPos.x += dx * this.magnetStrength * this.smoothFactor;
+        aimPos.y += dy * this.magnetStrength * this.smoothFactor;
+
+        return aimPos;
+    }
+};
+
+
+// =====================================================
+// 2) MagnetHeadLock_Instant — Khóa cứng không mượt, Instant Head Lock
+// =====================================================
+var MagnetHeadLock_Instant = {
+    enabled: true,
+
+    instantStrength: 3.5,    
+    snapThreshold: 0.20,      
+
+    apply(aimPos, target, player) {
+        if (!this.enabled || !target || !target.headPos) return aimPos;
+
+        let head = target.headPos;
+        let dx = head.x - aimPos.x;
+        let dy = head.y - aimPos.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < this.snapThreshold) {
+            aimPos.x = head.x;
+            aimPos.y = head.y;
+            return aimPos;
+        }
+
+        aimPos.x += dx * this.instantStrength;
+        aimPos.y += dy * this.instantStrength;
+
+        return aimPos;
+    }
+};
+
+
+// =====================================================
+// 3) MagnetHeadLock_DragSafe — dành cho DragLock, không overshoot
+// =====================================================
+var MagnetHeadLock_DragSafe = {
+    enabled: true,
+
+    dragStrength: 1.65,
+    antiOvershoot: 0.85,
+    dragStickiness: 1.75,
+    maxStep: 0.045,
+    dragPrediction: 0.20,
+
+    apply(aimPos, target, player) {
+        if (!this.enabled || !player.isDragging || !target || !target.headPos)
+            return aimPos;
+
+        let head = target.headPos;
+        let dx = head.x - aimPos.x;
+        let dy = head.y - aimPos.y;
+
+        if (target.velocity) {
+            dx += target.velocity.x * this.dragPrediction;
+            dy += target.velocity.y * this.dragPrediction;
+        }
+
+        dx = Math.max(-this.maxStep, Math.min(this.maxStep, dx));
+        dy = Math.max(-this.maxStep, Math.min(this.maxStep, dy));
+
+        dx *= this.dragStrength * this.dragStickiness;
+        dy *= this.dragStrength * this.dragStickiness;
+
+        dx *= this.antiOvershoot;
+        dy *= this.antiOvershoot;
+
+        aimPos.x += dx;
+        aimPos.y += dy;
+
+        return aimPos;
+    }
+};
+
+
+// =======================================================================
+// 📌 HOOK TÍCH HỢP – GHÉP 3 MODULE VÀO AIM ENGINE CHÍNH
+// =======================================================================
+
+function ApplyMagnetHeadLocks(aimPos, target, player) {
+
+    // ⚡ Magnet 300% (mượt – lực hút siêu mạnh)
+    if (MagnetHeadLock_X3.enabled) {
+        aimPos = MagnetHeadLock_X3.apply(aimPos, target, player);
+    }
+
+    // ⚡ Magnet Instant (khóa cứng)
+    if (MagnetHeadLock_Instant.enabled && player.isFiring) {
+        aimPos = MagnetHeadLock_Instant.apply(aimPos, target, player);
+    }
+
+    // ⚡ Magnet DragSafe (drag không lố đầu)
+    if (MagnetHeadLock_DragSafe.enabled && player.isDragging) {
+        aimPos = MagnetHeadLock_DragSafe.apply(aimPos, target, player);
+    }
+
+    return aimPos;
+}
     // ==========================================================
     // DRAG SYSTEMS (stub)
     // ==========================================================
