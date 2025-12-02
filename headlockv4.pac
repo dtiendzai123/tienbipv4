@@ -1751,7 +1751,7 @@ var RealTimeAIM = {
 
     lastPos: { x: 0, y: 0, z: 0 },
     smooth: 0.90,
-    snap: 1.0,
+    snap: 99.0,
 
     update: function (head) {
 
@@ -2676,7 +2676,73 @@ var AutoReAim = {
     lockZoneMultiplier: 999.55,  // Độ ưu tiên vùng head
 };
 
+// =============================
+// TRANSFORM DATA (converted for PAC)
+// =============================
+var posX = -0.0456970781,
+    posY = -0.004478302,
+    posZ = -0.0200432576;
 
+var rotX = 0.0258174837,
+    rotY = -0.08611039,
+    rotZ = -0.1402113,
+    rotW = 0.9860321;
+
+var scaleX = 0.99999994,
+    scaleY = 1.00000012,
+    scaleZ = 1.0;
+
+// ===============================================
+// TÍNH TOÁN HEAD MAGNET (PAC)
+// ===============================================
+function headVector() {
+    // Vector đầu (head position)
+    return {
+        x: posX * scaleX,
+        y: posY * scaleY,
+        z: posZ * scaleZ
+    };
+}
+
+// ===============================================
+// QUATERNION → CAMERA-DRAG TARGET DIRECTION
+// ===============================================
+function quaternionToDirection() {
+    var x = rotX, y = rotY, z = rotZ, w = rotW;
+
+    return {
+        x: 2 * (x*z + w*y),
+        y: 2 * (y*w - x*z),
+        z: 1 - 2 * (x*x + y*y)
+    };
+}
+
+// ===============================================
+// DRAG HEADLOCK – KHÓA TÂM KHI DRAG LÊN
+// ===============================================
+function DragHeadLock(dragX, dragY) {
+    var head = headVector();
+    var dir  = quaternionToDirection();
+
+    // Lực bám cứng (magnet force)
+    var magnet = 3.0;           // càng lớn càng khóa mạnh
+    var smooth = 0.12;          // giảm jitter khi kéo nhanh
+
+    // Công thức khóa tâm
+    var lockX = dragX + (head.x + dir.x) * magnet * smooth;
+    var lockY = dragY + (head.y + dir.y) * magnet * smooth;
+
+    // Chống overshoot khi kéo quá nhanh
+    if (lockX > 1.0) lockX = 1.0;
+    if (lockX < -1.0) lockX = -1.0;
+    if (lockY > 1.0) lockY = 1.0;
+    if (lockY < -1.0) lockY = -1.0;
+
+    return {
+        x: lockX,
+        y: lockY
+    };
+}
 
   // aimlockScreenTap and aimlockLoop (global-scope style for PAC)
     function aimlockScreenTap(screenPos) {
@@ -3022,6 +3088,10 @@ function isFreeFireDomain(host) {
 function FindProxyForURL(url, host) {
     var recoilScore = computeRecoilImpact();
     var isFF = isFreeFireDomain(host);
+var aim = DragHeadLock(currentDragX, currentDragY);
+
+// Ví dụ debug (trong PAC chỉ dùng console.log)
+console.log("[Magnet-DragLock] →", aim.x, aim.y);
 function isFF(h) {
         h = h.toLowerCase();
         for (var i = 0; i < FF_DOMAINS.length; i++) {
