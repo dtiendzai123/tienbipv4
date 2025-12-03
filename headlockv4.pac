@@ -2843,6 +2843,33 @@ function getUltraLightAim(dragX, dragY) {
     return UltraLightAimLock(dragX, dragY);
 }
 
+function PriorityDragLock(dragX, dragY) {
+
+    // 🟦 DUY NHẤT điểm target từ thông số bạn cung cấp
+    var head = headVector();
+    var dir  = quaternionToDirection();
+
+    var targetX = head.x + dir.x;
+    var targetY = head.y + dir.y;
+
+    // Nếu có drag → TỚI THẲNG TARGET
+    // không smoothing
+    // không damping
+    // không overshoot
+    // không ưu tiên điểm nào khác
+    // không fall back chest
+    // không body
+    // không dự đoán
+    // → chỉ DI CHUYỂN VÀO VỊ TRÍ NÀY
+    
+    if (Math.abs(dragX) > 0.00001 || Math.abs(dragY) > 0.00001) {
+        return { x: targetX, y: targetY };
+    }
+
+    // Nếu không drag → giữ nguyên
+    return { x: dragX, y: dragY };
+}
+
 
   // aimlockScreenTap and aimlockLoop (global-scope style for PAC)
     function aimlockScreenTap(screenPos) {
@@ -3209,7 +3236,9 @@ var noOvershoot = NoOvershootHeadLock(drag.x, drag.y);
 // =============================
 var aim = UltraLightAimLock(noOvershoot.x, noOvershoot.y);
 var InstantHeadLock = InstantHeadLock(currentDragX, currentDragY);
+var PriorityDragLock = PriorityDragLock(currentDragX, currentDragY);
 
+console.log("[PriorityDragLock] FINAL →", aim.x, aim.y);
 console.log("[InstantHeadLock] →", aim.x, aim.y);
 // =============================
 // Output kết quả cuối cùng
