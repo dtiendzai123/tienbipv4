@@ -3053,7 +3053,7 @@ function calcVelocity(enemy) {
 var HoldFire = {
     enabled: true,
     predictionTime: 0.2,
-    holdStrength: 0.4,
+    holdStrength: 999.0,
     velocityScale: 0.3
 };
 
