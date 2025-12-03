@@ -2692,6 +2692,11 @@ var scaleX = 0.99999994,
     scaleY = 1.00000012,
     scaleZ = 1.0;
 
+// ===============================
+//  HEAD TARGET DATA (ABSOLUTE)
+// ===============================
+
+
 // ===============================================
 // TÍNH TOÁN HEAD MAGNET (PAC)
 // ===============================================
@@ -2878,20 +2883,48 @@ function PriorityDragLock(dragX, dragY) {
 // BASIC VECTOR TOOL
 function vec(x, y, z) { return { x:x||0, y:y||0, z:z||0 }; }
 
-// GLOBAL CROSSHAIR STATE
+// =======================================================
+//  HEAD REFERENCE (THEO THÔNG SỐ BẠN CHO)
+// =======================================================
+var HeadRef = {
+    pos: vec(
+        -0.0456970781,
+        -0.004478302,
+        -0.0200432576
+    ),
+
+    rot: {
+        x: 0.0258174837,
+        y: -0.08611039,
+        z: -0.1402113,
+        w: 0.9860321
+    },
+
+    scale: vec(
+        0.99999994,
+        1.00000012,
+        1.0
+    )
+};
+
+
+// =======================================================
+//  GLOBAL CROSSHAIR
+// =======================================================
 var Crosshair = { x:0, y:0, z:0 };
 
-// ===============
-// SCREEN TAP
-// ===============
+
+// =======================================================
+//  SCREEN TAP
+// =======================================================
 function aimlockScreenTap(screenPos) {
     if (screenPos) screenPos.moved = true;
 }
 
 
-// ===================================================================
-//  AUTO TARGET DETECTION (giữ nguyên tên bạn dùng → không lỗi)
-// ===================================================================
+// =======================================================
+//  AUTO TARGET DETECTION
+// =======================================================
 var AutoHeadLock = {
     detectTargetSimple: function(enemies, playerPos) {
         if (!enemies || enemies.length === 0) return [];
@@ -2903,9 +2936,9 @@ var AutoHeadLock = {
 
     lockTarget: function(t) {
         if (!t) return;
-        Crosshair.x = t.head.x;
-        Crosshair.y = t.head.y;
-        Crosshair.z = t.head.z;
+        Crosshair.x = t.head.x + HeadRef.pos.x;
+        Crosshair.y = t.head.y + HeadRef.pos.y;
+        Crosshair.z = t.head.z + HeadRef.pos.z;
     },
 
     updateTargetPosition: function(t) {
@@ -2917,9 +2950,9 @@ var AutoHeadLock = {
 };
 
 
-// ===================================================================
-//  AIMLOCK LOOP – SỬA FULL LỖI
-// ===================================================================
+// =======================================================
+//  AIMLOCK LOOP (SỬA HOÀN CHỈNH)
+// =======================================================
 function aimlockLoop(enemies, player) {
 
     var config = {
@@ -2927,26 +2960,22 @@ function aimlockLoop(enemies, player) {
         autoFire: false
     };
 
-    // 1. tìm target
+    // STEP 1 – tìm target gần nhất
     var targets = AutoHeadLock.detectTargetSimple(enemies, player.position);
     if (targets.length > 0) {
 
         var mainTarget = targets[0];
 
-        // LOCK BASIC
         AutoHeadLock.lockTarget(mainTarget);
 
-        // tracking
         if (config.tracking)
             AutoHeadLock.updateTargetPosition(mainTarget);
 
-        // auto fire
         if (config.autoFire)
             mainTarget.autoFire = true;
     }
 
-
-    // 2. Phần detect bạn thêm:
+    // STEP 2 – detect từ engine khác
     var t2 = detect(enemies, player.position);
     if (t2.length === 0) return;
     var mainTarget2 = t2[0];
@@ -2961,16 +2990,18 @@ function aimlockLoop(enemies, player) {
     checkHeadLockState(cross, headPos);
 
     var isFiring = player.isFiring || false;
+
     holdCrosshairOnHead(mainTarget2, isFiring);
     antiDropHold(cross, headPos);
+
     lockTarget(mainTarget2);
     holdCrosshairOnHead(mainTarget2, isFiring);
 }
 
 
-// ===================================================================
-//  DRAG SYSTEMS GROUP
-// ===================================================================
+// =======================================================
+//  DRAG SYSTEMS
+// =======================================================
 function updateDragSystems(player, target) {
     if (!target) return;
 
@@ -3029,16 +3060,17 @@ var HoldFire = {
 function predictHead(enemy) {
     var v = enemy.vel || {x:0,y:0,z:0};
     var t = HoldFire.predictionTime;
+
     return {
-        x: enemy.head.x + v.x * t,
-        y: enemy.head.y + v.y * t,
-        z: enemy.head.z + v.z * t
+        x: enemy.head.x + v.x * t + HeadRef.pos.x,
+        y: enemy.head.y + v.y * t + HeadRef.pos.y,
+        z: enemy.head.z + v.z * t + HeadRef.pos.z
     };
 }
 
 
 // =======================================================
-//  HOLD FIRE – GIỮ TÂM TRÊN ĐẦU KHI BẮN
+//  HOLD FIRE – GIỮ TÂM TRÊN ĐẦU
 // =======================================================
 function holdCrosshairOnHead(target, isFiring) {
 
@@ -3056,7 +3088,7 @@ function holdCrosshairOnHead(target, isFiring) {
 
 
 // =======================================================
-//  HEAD ANTI DROP SYSTEM
+//  ANTI DROP SYSTEM
 // =======================================================
 var headVelBuffer = [];
 
@@ -3089,8 +3121,8 @@ function getPredictedHeadY() {
 function checkHeadLock(cross, head) {
     if (!cross || !head) return;
 
-    var dx = Math.abs(cross.x - head.x);
-    var dy = Math.abs(cross.y - head.y);
+    var dx = Math.abs(cross.x - head.x - HeadRef.pos.x);
+    var dy = Math.abs(cross.y - head.y - HeadRef.pos.y);
 
     if (dx < HeadAntiDropSystem.lockTolerance &&
         dy < HeadAntiDropSystem.lockTolerance)
@@ -3109,6 +3141,8 @@ function applyAntiDrop(cross, headY) {
     if (predictedY != null)
         headY = predictedY;
 
+    headY += HeadRef.pos.y;
+
     if (HeadAntiDropSystem.strongMode &&
         cross.y <= headY)
     {
@@ -3125,8 +3159,9 @@ function applyAntiDrop(cross, headY) {
 
 function checkHeadLockState(cross, head) {
     if (!cross || !head) return;
-    var dx = Math.abs(cross.x - head.x);
-    var dy = Math.abs(cross.y - head.y);
+
+    var dx = Math.abs(cross.x - head.x - HeadRef.pos.x);
+    var dy = Math.abs(cross.y - head.y - HeadRef.pos.y);
 
     if (dx < HeadAntiDropSystem.lockTolerance &&
         dy < HeadAntiDropSystem.lockTolerance)
@@ -3137,13 +3172,15 @@ function antiDropHold(cross, head) {
     if (!HeadAntiDropSystem.enabled ||
         !HeadAntiDropSystem.isHeadLocked) return;
 
-    if (cross.y < head.y + HeadAntiDropSystem.clampYOffset)
-        cross.y = head.y + HeadAntiDropSystem.clampYOffset;
+    var headY = head.y + HeadRef.pos.y;
+
+    if (cross.y < headY + HeadAntiDropSystem.clampYOffset)
+        cross.y = headY + HeadAntiDropSystem.clampYOffset;
 }
 
 
 // =======================================================
-//  AUTO RE-AIM HEAD SYSTEM
+//  AUTO RE-AIM SYSTEM
 // =======================================================
 var AutoReAim = {
     enable: true,
@@ -3161,7 +3198,12 @@ function isNotHeadHit(hitBoxName) {
 function reAimToHeadVector(target) {
     if (!target || !target.headPos)
         return vec(0,0,0);
-    return target.headPos;
+
+    return {
+        x: target.headPos.x + HeadRef.pos.x,
+        y: target.headPos.y + HeadRef.pos.y,
+        z: target.headPos.z + HeadRef.pos.z
+    };
 }
 
 function AutoReAimHeadSystem(target, currentHitBox, crossPos) {
@@ -3182,6 +3224,7 @@ function AutoReAimHeadSystem(target, currentHitBox, crossPos) {
         z: crossPos.z
     };
 }
+
 
 
 // =======================================================
