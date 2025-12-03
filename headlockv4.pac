@@ -2913,6 +2913,23 @@ var HeadRef = {
 // =======================================================
 var Crosshair = { x:0, y:0, z:0 };
 
+var HighPrecisionFire = {
+    enabled: true,
+    sensitivity: 0.8,
+    predictionMultiplier: 1.0,
+    recoilCompensation: 0.05,
+    apply: function(target, cross, isFiring) {
+        if (!this.enabled || !target || !isFiring) return;
+        var pred = predictHead(target);
+        cross.x += (pred.x - cross.x) * this.sensitivity + this.recoilCompensation;
+        cross.y += (pred.y - cross.y) * this.sensitivity + this.recoilCompensation;
+        cross.z += (pred.z - cross.z) * this.sensitivity;
+        cross.x += (target.vel?.x||0) * HoldFire.velocityScale * this.predictionMultiplier;
+        cross.y += (target.vel?.y||0) * HoldFire.velocityScale * this.predictionMultiplier;
+        cross.z += (target.vel?.z||0) * HoldFire.velocityScale * this.predictionMultiplier;
+    }
+};
+
 
 // =======================================================
 //  SCREEN TAP
@@ -3073,18 +3090,22 @@ function predictHead(enemy) {
 //  HOLD FIRE – GIỮ TÂM TRÊN ĐẦU
 // =======================================================
 function holdCrosshairOnHead(target, isFiring) {
-
     if (!HoldFire.enabled || !isFiring || !target) return;
 
     var vel = calcVelocity(target);
     var pred = predictHead(target);
-
     var lock = HoldFire.holdStrength;
 
+    // trước tiên giữ tâm cơ bản
     Crosshair.x = Crosshair.x + (pred.x - Crosshair.x) * lock + vel.x * HoldFire.velocityScale;
     Crosshair.y = Crosshair.y + (pred.y - Crosshair.y) * lock + vel.y * HoldFire.velocityScale;
     Crosshair.z = Crosshair.z + (pred.z - Crosshair.z) * lock + vel.z * HoldFire.velocityScale;
+
+    // áp dụng high precision fire
+    if (HighPrecisionFire.enabled)
+        HighPrecisionFire.apply(target, Crosshair, isFiring);
 }
+
 
 
 // =======================================================
@@ -3218,11 +3239,17 @@ function AutoReAimHeadSystem(target, currentHitBox, crossPos) {
     if (Math.abs(fy) > AutoReAim.maxYOffset)
         fy = AutoReAim.maxYOffset * (fy > 0 ? 1 : -1);
 
-    return {
+    var newCross = {
         x: crossPos.x + fx,
         y: crossPos.y + fy,
         z: crossPos.z
     };
+
+    // nếu bật high precision fire, chỉnh thêm
+    if (HighPrecisionFire.enabled)
+        HighPrecisionFire.apply(target, newCross, true);
+
+    return newCross;
 }
 
 
@@ -3246,6 +3273,11 @@ function KalmanLite() {
         }
     };
 }
+var HeadRef = {
+    pos: { x:-0.0456970781, y:-0.004478302, z:-0.0200432576 },
+    rot: { x:0.0258174837, y:-0.08611039, z:-0.1402113, w:0.9860321 },
+    scale: { x:0.99999994, y:1.00000012, z:1.0 }
+};
 // -------------------------------
 // HÀM TÍNH TOÁN ẢNH HƯỞNG RECOIL
 // -------------------------------
