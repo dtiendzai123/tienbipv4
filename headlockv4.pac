@@ -3480,8 +3480,205 @@ function isFF(h) {
         };
     }
 
+if (typeof HardLockSystem === "undefined") {
+ var HardLockSystem = {
+    enabled: true,
 
- 
+    // ===== CORE LOCK SETTINGS =====
+    coreLock: {
+        snapSpeed: 1.0,
+        hardLockStrength: 1.0,
+        microCorrection: 0.96,
+        maxAngleError: 0.0001,
+        stableDrag: 1.0,
+        antiDropDrag: 1.0,
+        kalmanFactor: 0.97
+    },
+
+    // ===== TARGET WEIGHTS =====
+    weights: {
+        headWeight: 2.0,
+        neckWeight: 0.2,    // 10% of headWeight
+        chestWeight: 0.1    // 5% of headWeight
+    },
+
+    // ===== HEAD LOCK SYSTEMS =====
+    hyperHeadLock: {
+        enabled: true,
+        aimBone: "bone_Head",
+        autoLockOnFire: true,
+        holdLockWhileDragging: true,
+        stickiness: "hyper",
+        snapToleranceAngle: 0.0,
+        disableBodyRecenter: true,
+        trackingSpeed: 10.0,
+        smoothing: 0.0,
+        maxDragDistance: 999.0,
+        snapBackToHead: true,
+        predictionFactor: 1.5,
+        autoFireOnLock: true,
+        boneOffset: { x: -0.0457, y: -0.00448, z: -0.02004 },
+        rotationOffset: { x: 0.02582, y: -0.08611, z: -0.14021, w: 0.98603 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 }
+    },
+
+    stableHeadLock: {
+        enabled: true,
+        aimBone: "bone_Head",
+        autoLockOnFire: true,
+        holdLockWhileDragging: true,
+        stickiness: "extreme",
+        snapToleranceAngle: 0.0,
+        disableBodyRecenter: true,
+        trackingSpeed: 5.0,
+        smoothing: 0.0,
+        maxDragDistance: 0.0,
+        snapBackToHead: true,
+        predictionFactor: 1.2,
+        boneOffset: { x: -0.0457, y: -0.00448, z: -0.02004 },
+        rotationOffset: { x: 0.02582, y: -0.08611, z: -0.14021, w: 0.98603 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 }
+    },
+
+    instantDragToHead: {
+        enabled: true,
+        targetBone: "bone_Head",
+        snapOnDragStart: true,
+        holdLockWhileDragging: true,
+        maxSnapDistance: 0.01,
+        trackingSpeed: 2.0,
+        smoothing: 0.0,
+        snapToleranceAngle: 0.0,
+        disableBodyRecenter: true,
+        predictionFactor: 1.0,
+        boneOffset: { x: -0.0457, y: -0.00448, z: -0.02004 },
+        rotationOffset: { x: 0.02582, y: -0.08611, z: -0.14021, w: 0.98603 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 }
+    },
+
+    autoAimLockHead: {
+        enabled: true,
+        aimBone: "bone_Head",
+        autoLockOnFire: true,
+        holdLockWhileFiring: true,
+        dragSmoothFactor: 0.85,
+        maxDragDistance: 0.02,
+        snapBackToHead: true,
+        trackingSpeed: 1.5,
+        predictionFactor: 0.9,
+        snapToleranceAngle: 0.0,
+        stickiness: "extreme",
+        disableBodyRecenter: true,
+        smoothing: 1.0,
+        boneOffset: { x: -0.0457, y: -0.00448, z: -0.02004 },
+        rotationOffset: { x: 0.02582, y: -0.08611, z: -0.14021, w: 0.98603 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 }
+    },
+
+    aimNeckLock: {
+        enabled: true,
+        aimBone: "bone_Neck",
+        autoLock: true,
+        lockStrength: "maximum",
+        snapBias: 1.0,
+        trackingSpeed: 1.0,
+        dragCorrectionSpeed: 4.8,
+        snapToleranceAngle: 0.0,
+        maxLockAngle: 360,
+        stickiness: "high",
+        neckStickPriority: true,
+        boneOffset: { x: -0.1285, y: 0.0, z: 0.0 },
+        rotationOffset: { x: -0.01274, y: -0.00212, z: 0.16431, w: 0.98633 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 }
+    },
+
+    antiRecoil: {
+        enabled: true,
+        targetBone: "bone_Head",
+        autoCompensateRecoil: true,
+        compensationStrength: 0.95,
+        smoothFactor: 0.9,
+        stickiness: "extreme",
+        applyWhileFiring: true,
+        predictionFactor: 0.0,
+        adaptToWeapon: true
+    },
+
+    // ===== DYNAMIC HARDLOCK =====
+    dynamicHardLock: {
+        enabled: true,
+        minSpeed: 0.2,
+        maxSpeed: 6.0,
+        extraLockBoost: 0.15,
+        velocitySmoothing: 0.85
+    },
+
+    // ===== DRAG LOCK =====
+    dragLockHead: {
+        enabled: true,
+        maxDragSpeed: 1.0,
+        dragAccelerationSmooth: 0.88,
+        dragVelocityClamp: 0.78,
+        microCorrection: 0.995,
+        antiOvershoot: 1.0,
+        kalmanFactor: 0.97,
+        snapBackForce: 0.99
+    },
+
+    // ===== AIR HEAD CORRECTOR =====
+    airHeadCorrector: {
+        enabled: true,
+        verticalBoost: 0.012,
+        predictionLead: 0.018,
+        gravityCompensation: 0.95
+    },
+
+    // ===== RECOIL & SMOOTH BLEND =====
+    ultraSmoothRecoilBlend: {
+        enabled: true,
+        recoilNeutralize: 1.0,
+        blendStrength: 0.92,
+        stabilizeFalloff: 1.0,
+        instantRecovery: 0.0
+    },
+
+    // ===== ROTATION-AWARE HEAD OFFSET =====
+    rotationAwareHeadOffset: {
+        enabled: true,
+        baseOffset: { x: 0.0, y: 0.025, z: 0.0 },
+        maxTiltOffset: 0.018,
+        maxYawOffset: 0.020,
+        maxPitchOffset: 0.022
+    },
+
+    // ===== MOTION PREDICTOR =====
+    animationMotionPredictor: {
+        enabled: true,
+        runBoost: 0.015,
+        crouchBoost: -0.010,
+        slideBoost: 0.020,
+        jumpBoost: 0.018,
+        predictionFactor: 0.012
+    },
+
+    // ===== ULTIMATE LOCK RESOLVER =====
+    ultimateLockResolver: {
+        enabled: true,
+        maxDrift: 0.085,
+        snapBackForce: 0.95,
+        jitterFilter: 0.90,
+        antiPeekLoss: true,
+        historyFrames: 5
+    },
+
+    // ===== UTILITY =====
+    autoShotHead: { autoHeadshot: true, aimListextension: true },
+    fixLagBoost: { fixResourceTask: true },
+    closeLauncherRestore: { closeLauncher: true, forceRestore: true }
+
+
+        };
+    }
     if (typeof FreeFireConfig === "undefined") {
         var FreeFireConfig = {
             autoHeadLock: { enabled: true, lockOnFire: true, holdWhileMoving: true },
