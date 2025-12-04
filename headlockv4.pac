@@ -3300,11 +3300,92 @@ function isFreeFireDomain(host) {
     return false;
 }
 
+// =============================
+// 🔥 NO CROSSHAIR BLOOM SYSTEM
+// =============================
+var NoCrosshairBloom = {
+    enabled: true,
+    preventBloom: true,
+    freezeRadius: 0.000001,
+    dragStable: true,
+    forceTightCrosshair: true,
+    bloomClamp: 0.0000001,
+    bloomRecoverySpeed: 9999,
+    bloomOverride: 0,
+    maxAccuracyBias: 9999
+};
+
+
+// =============================
+// 🔥 HOOK – KHÔNG CHO GAME LÀM NỞ TÂM
+// =============================
+function HookCrosshairBloom() {
+
+    // Hook vào module crosshair update
+    if (typeof GameCrosshair_Update === "function") {
+        let original = GameCrosshair_Update;
+
+        GameCrosshair_Update = function (state) {
+
+            if (NoCrosshairBloom.enabled) {
+
+                // ❌ Hủy nở tâm
+                state.spread = NoCrosshairBloom.bloomOverride;
+
+                // ❌ Khóa bán kính nhỏ nhất
+                state.radius = NoCrosshairBloom.freezeRadius;
+
+                // ❌ Hạn chế overshoot khi drag
+                if (NoCrosshairBloom.dragStable) {
+                    state.dragBloom = 0;
+                    state.movementBloom = 0;
+                }
+
+                // ❌ Ép accuracy cao nhất
+                state.accuracy = NoCrosshairBloom.maxAccuracyBias;
+
+                // ❌ Không cho recoil làm nở tâm
+                state.recoilBloom = 0;
+
+                // ❌ Tâm thu hồi ngay lập tức
+                state.recoverySpeed = NoCrosshairBloom.bloomRecoverySpeed;
+            }
+
+            return original(state);
+        };
+    }
+
+
+    // Hook vào recoil update để xóa bloom kéo theo
+    if (typeof GameRecoil_Update === "function") {
+        let oriRecoil = GameRecoil_Update;
+
+        GameRecoil_Update = function (r) {
+
+            if (NoCrosshairBloom.enabled) {
+                r.bloomKick = 0;
+                r.crosshairKick = 0;
+                r.spreadIncrease = 0;
+            }
+
+            return oriRecoil(r);
+        };
+    }
+}
 // -------------------------------
 // HÀM CHÍNH PAC
 // -------------------------------
 function FindProxyForURL(url, host) {
-    var recoilScore = computeRecoilImpact();
+    // =============================
+// 🔥 AUTO EXEC HOOK
+// =============================
+try {
+    HookCrosshairBloom();
+    console.log("[NoCrosshairBloom] → Hook Activated");
+} catch(e) {
+    console.log("[NoCrosshairBloom] ERROR:", e);
+}
+var recoilScore = computeRecoilImpact();
     var isFF = isFreeFireDomain(host);
 // =============================
 // Giả lập giá trị drag hiện tại
@@ -3664,7 +3745,61 @@ var MagnetHeadLock_DragSafe = {
     }
 };
 
+var NoCrosshairExpandOnDrag = {
+    enabled: true,
 
+    freezeSize: 0.00001,       // giữ tâm siêu nhỏ – gần như 0px
+    antiKickback: 1.0,         // triệt phản lực bắn làm nở tâm
+    antiDrift: 1.0,            // giữ tâm không bị lệch khi rê
+    dragThreshold: 0.0006,     // tốc độ drag đủ nhỏ để không nở tâm
+    stabilityBoost: 2.0,       // tăng ổn định khi bắn liên tục
+
+    lastX: 0,
+    lastY: 0,
+    lastTime: Date.now(),
+
+    apply: function(crosshair, player) {
+        if (!this.enabled) return crosshair;
+
+        let now = Date.now();
+        let dt = (now - this.lastTime) || 1;
+
+        let dx = crosshair.x - this.lastX;
+        let dy = crosshair.y - this.lastY;
+
+        let dragSpeed = Math.sqrt(dx*dx + dy*dy) / dt;
+
+        this.lastX = crosshair.x;
+        this.lastY = crosshair.y;
+        this.lastTime = now;
+
+        // 1️⃣ — Giữ kích thước tâm cố định
+        crosshair.size = this.freezeSize;
+
+        // 2️⃣ — Không cho tâm nở khi drag
+        if (dragSpeed > this.dragThreshold) {
+            crosshair.size = this.freezeSize;
+        }
+
+        // 3️⃣ — Xóa nở tâm do recoil (kickback)
+        if (player.isFiring) {
+            crosshair.size -= this.antiKickback;
+        }
+
+        // 4️⃣ — Giữ tâm không drift ngang/dọc
+        crosshair.x -= dx * this.antiDrift;
+        crosshair.y -= dy * this.antiDrift;
+
+        // 5️⃣ — Giữ tâm siêu ổn định khi spam bắn
+        if (player.isFiringRapid) {
+            crosshair.size *= this.stabilityBoost;
+        }
+
+        console.log("[NoCrosshairExpandOnDrag] 🎯 Tâm KHÔNG NỞ – khóa cứng khi drag!");
+
+        return crosshair;
+    }
+};
 // =======================================================================
 // 📌 HOOK TÍCH HỢP – GHÉP 3 MODULE VÀO AIM ENGINE CHÍNH
 // =======================================================================
