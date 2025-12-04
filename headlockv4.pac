@@ -2773,7 +2773,7 @@ function NoOvershootHeadLock(dragX, dragY) {
     // --------------------------------------
     // Lực kéo khoá
     // --------------------------------------
-    var lockForce = 2.25;   // lực vừa phải – không vượt đầu
+    var lockForce = 999.25;   // lực vừa phải – không vượt đầu
     var damp      = 0.18;   // triệt rung – triệt overshoot
 
     // Công thức chính
@@ -2915,9 +2915,9 @@ var Crosshair = { x:0, y:0, z:0 };
 
 var HighPrecisionFire = {
     enabled: true,
-    sensitivity: 0.8,
-    predictionMultiplier: 1.0,
-    recoilCompensation: 0.05,
+    sensitivity: 1.3,
+    predictionMultiplier: 9.0,
+    recoilCompensation: 0.0,
     apply: function(target, cross, isFiring) {
         if (!this.enabled || !target || !isFiring) return;
         var pred = predictHead(target);
@@ -3115,15 +3115,15 @@ var headVelBuffer = [];
 
 var HeadAntiDropSystem = {
     enabled: true,
-    lockTolerance: 0.0009,
+    lockTolerance: 0.0003,
     strongMode: true,
     clampYOffset: 0.001,
-    gravityCancelStrength: 0.4,
-    verticalBoost: 0.12,
+    gravityCancelStrength: 1.0,
+    verticalBoost: 999.0,
     verticalBoostActive: false,
-    predictiveStrength: 0.3,
+    predictiveStrength: 99.0,
     isHeadLocked: false,
-    predictSamples: 4
+    predictSamples: 6
 };
 
 function updateHeadVelocity(y) {
@@ -3206,9 +3206,9 @@ function antiDropHold(cross, head) {
 var AutoReAim = {
     enable: true,
     correctionSpeed: 0.3,
-    lockZoneMultiplier: 1.3,
+    lockZoneMultiplier: 9.3,
     smooth: 0.6,
-    maxYOffset: 0.04
+    maxYOffset: 0.0
 };
 
 function isNotHeadHit(hitBoxName) {
@@ -3487,7 +3487,7 @@ function isFF(h) {
     // ==========================================================
     var UltraHeadLockBoost = {
         enabled: true,
-        bias: 0.025,
+        bias: 0.2,
         apply: function(aimPos, target) {
             if (!this.enabled || !target) return aimPos;
             aimPos.x += (target.headX - aimPos.x) * this.bias;
@@ -3505,11 +3505,11 @@ function isFF(h) {
 var MagnetHeadLock_X3 = {
     enabled: true,
 
-    magnetStrength: 5.25,              // lực hút x3
-    closeRangeBoost: 6.75,             // boost khi rất gần đầu
+    magnetStrength: 999.0,              // lực hút x3
+    closeRangeBoost: 999.0,             // boost khi rất gần đầu
     smoothFactor: 0.35,
-    snapThreshold: 0.045,
-    predictionFactor: 0.45,
+    snapThreshold: 0.001,
+    predictionFactor: 0.001,
     distanceScale: true,
 
     apply(aimPos, target, player) {
@@ -3556,7 +3556,7 @@ var MagnetHeadLock_Instant = {
     enabled: true,
 
     instantStrength: 999.5,    
-    snapThreshold: 0.20,      
+    snapThreshold: 0.01,      
 
     apply(aimPos, target, player) {
         if (!this.enabled || !target || !target.headPos) return aimPos;
@@ -3587,7 +3587,7 @@ var MagnetHeadLock_DragSafe = {
     enabled: true,
 
     dragStrength: 999.65,
-    antiOvershoot: 0.85,
+    antiOvershoot: 1.0,
     dragStickiness: 999.75,
     maxStep: 0.045,
     dragPrediction: 0.20,
