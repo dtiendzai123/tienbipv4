@@ -3357,7 +3357,20 @@ function isFF(h) {
             autoFire: true
         };
     }
+ if (typeof AdaptiveAimSystem === "undefined") {
+        var AdaptiveAimSystem = {
+            LockMode: "Head",          // Lock trực tiếp vào đầu
+            LockEnemy: true,           // Auto chọn mục tiêu gần nhất
+            AutoAdjustRecoil: true,    // Tự giảm giật khi lock
+            HeadshotBias: 9999,        // Ưu tiên head tuyệt đối (x9999)
+            NoGravityRange: 9999,      // Xóa trọng lực hướng aim (tầm hoạt động 9999m)
+            StickToHead: true,         // Bám đầu như nam châm
+            AntiDrop: true,            // Không tụt tâm xuống cổ
+            PredictiveAim: true        // Có dự đoán vị trí đầu
+        };
+    }
 
+ 
     if (typeof FreeFireConfig === "undefined") {
         var FreeFireConfig = {
             autoHeadLock: { enabled: true, lockOnFire: true, holdWhileMoving: true },
