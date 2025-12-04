@@ -2675,7 +2675,119 @@ var AutoReAim = {
     maxYOffset: 0.0,          // Y cho phép lệch tối đa trước khi kéo lại
     lockZoneMultiplier: 999.55,  // Độ ưu tiên vùng head
 };
+var IgnoreAimBones = [
+    {
+        name: "bone_Neck",
+        hash: 96688289,
+        parent: -1541408846,
+        position: { x: -0.045697, y: -0.004478, z: 0.020043 },
+        rotation: { x: -0.025817, y: 0.08611, z: -0.140211, w: 0.986032 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
 
+    {
+        name: "bone_Spine1",
+        hash: -1541408846,
+        parent: -1051086991,
+        position: { x: -0.130391, y: -0.000117, z: 0.0 },
+        rotation: { x: 0.0, y: 0.0, z: 0.025503, w: 0.999675 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_Spine",
+        hash: -1051086991,
+        parent: 1529948125,
+        position: { x: -0.021448, y: 0.0, z: 0.0 },
+        rotation: { x: 0.0, y: 0.0, z: -0.114848, w: 0.993383 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_RightArm",
+        hash: -1111540788,
+        parent: -1010981232,
+        position: { x: -0.274924, y: -0.000002, z: -0.000003 },
+        rotation: { x: -0.007497, y: 0.049495, z: -0.139342, w: 0.988878 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_RightForeArm",
+        hash: 681138930,
+        parent: -1111540788,
+        position: { x: -0.253313, y: -0.000004, z: -0.000002 },
+        rotation: { x: 0.001979, y: -0.045261, z: -0.002841, w: 0.998966 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_RightHand",
+        hash: 1764261228,
+        parent: 681138930,
+        position: { x: -0.246861, y: -0.000004, z: -0.000001 },
+        rotation: { x: 0.011798, y: -0.005464, z: 0.015497, w: 0.999785 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_LeftLeg",
+        hash: -1305646021,
+        parent: -285661123,
+        position: { x: -0.211447, y: 0.0, z: 0.0 },
+        rotation: { x: 0.0, y: 0.0, z: 0.016685, w: 0.999861 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    },
+
+    {
+        name: "bone_LeftToe",
+        hash: -1258743979,
+        parent: -344692431,
+        position: { x: -0.055065, y: 0.064824, z: 0.0 },
+        rotation: { x: 0.0, y: 0.0, z: -0.707107, w: 0.707107 },
+        scale: { x: 1.0, y: 1.0, z: 1.0 },
+        targetable: false
+    }
+];
+function isBoneIgnored(boneName, boneHash) {
+    for (var i = 0; i < IgnoreAimBones.length; i++) {
+        var b = IgnoreAimBones[i];
+
+        // Ưu tiên so sánh hash vì game dùng hash để xác định bone
+        if (boneHash === b.hash) return true;
+
+        // Dự phòng: so sánh tên
+        if (boneName && boneName === b.name) return true;
+    }
+    return false;
+}
+function filterTargetBones(targetData) {
+    if (!targetData || !targetData.bones) return targetData;
+
+    var filtered = [];
+    for (var i = 0; i < targetData.bones.length; i++) {
+        var b = targetData.bones[i];
+
+        if (!isBoneIgnored(b.name, b.hash)) {
+            filtered.push(b);
+        }
+    }
+
+    // Nếu bị ignore hết → fallback dùng head
+    if (filtered.length === 0 && targetData.head) {
+        filtered.push(targetData.head);
+    }
+
+    targetData.bones = filtered;
+    return targetData;
+}
 // =============================
 // TRANSFORM DATA (converted for PAC)
 // =============================
@@ -3299,7 +3411,39 @@ function isFreeFireDomain(host) {
     }
     return false;
 }
+function updateAimTarget(player, rawTarget) {
+    if (!rawTarget) return null;
 
+    // Bỏ xương bị ignore
+    var target = filterTargetBones(rawTarget);
+
+    // Anti drop logic
+    if (HeadAntiDropSystem && HeadAntiDropSystem.enabled) {
+        target = HeadAntiDropFix(player, target);
+    }
+
+    // Magnet lock
+    if (MagnetHeadLock && MagnetHeadLock.enabled) {
+        target = MagnetHeadLock.apply(player, target);
+    }
+
+    // Drag lock
+    if (DragHeadLockStabilizer && DragHeadLockStabilizer.enabled) {
+        target = DragHeadLockStabilizer.stabilize(player, target);
+    }
+
+    return target;
+}
+function applyHeadLock(player, target) {
+    if (!target) return;
+
+    // nếu bone bị ignore thì không lock
+    if (isBoneIgnored(target.name, target.hash)) return;
+
+    if (AimLockSystem && AimLockSystem.EnableAimLock) {
+        return AimLockSystem.applyAimLock(target);
+    }
+}
 // =============================
 // 🔥 NO CROSSHAIR BLOOM SYSTEM
 // =============================
