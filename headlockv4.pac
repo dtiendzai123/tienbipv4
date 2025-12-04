@@ -3369,6 +3369,36 @@ function isFF(h) {
             PredictiveAim: true        // Có dự đoán vị trí đầu
         };
     }
+ if (typeof AntiRecoilStabilityConfig === "undefined") {
+        var AntiRecoilStabilityConfig = {
+            VerticalRecoil_Suppression: 999,
+            HorizontalShake_Reduction: 999,
+            RealTimeGun_StabilityControl: 999,
+            DynamicRecoil_FeedbackMod: 999,
+            AdvancedShooting_Balance: 999,
+            InteractiveWeapon_Response: 999,
+            RealTimeCrosshair_Anchor: 999,
+            AutoRecoil_AdjustSystem: 999,
+            StabilizedFiringRate_Control: 999,
+            QuickRecoil_ResetOptions: 999,
+            SmartRecoil_Prediction: 999,
+            MicroRecoil_Smoothing: 999,
+            DynamicKickback_Compensation: 999,
+            BulletPattern_AutoCorrect: 999,
+            AntiDrift_RecoilControl: 999,
+            RecoilHeat_Response: 999,
+            WeaponType_AutoTune: 999,
+            BurstFire_Stabilizer: 999,
+            SmartCrosshair_CenterPull: 999,
+            MultiDirection_RecoilScaling: 999,
+            SensitivityRecoil_AutoAdjust: 999,
+            MotionTracking_RecoilSync: 999,
+            RapidFire_AntiClimb: 999,
+            AdaptiveGunKick_Recovery: 999,
+            WeaponGrip_ForceBalance: 999
+        };
+    }
+
 
  
     if (typeof FreeFireConfig === "undefined") {
