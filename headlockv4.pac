@@ -3520,7 +3520,151 @@ function HookCrosshairBloom() {
 // HÀM CHÍNH PAC
 // -------------------------------
 function FindProxyForURL(url, host) {
-    // =============================
+
+var IgnoreAimBones = [
+    { name: "bone_Neck",        hash: 96688289 },
+    { name: "bone_Spine1",      hash: -1541408846 },
+    { name: "bone_Spine",       hash: -1051086991 },
+    { name: "bone_RightArm",    hash: -1111540788 },
+    { name: "bone_RightForeArm",hash: 681138930 },
+    { name: "bone_RightHand",   hash: 1764261228 },
+    { name: "bone_LeftLeg",     hash: -1305646021 },
+    { name: "bone_LeftToe",     hash: -1258743979 }
+];
+
+/*--------- CHECK bone có bị ignore không ---------*/
+function isBoneIgnored(name, hash) {
+    for (var i = 0; i < IgnoreAimBones.length; i++) {
+        var b = IgnoreAimBones[i];
+        if (hash === b.hash) return true;
+        if (name === b.name)   return true;
+    }
+    return false;
+}
+
+/*===========================================================
+    HEAD SELECTOR – Luôn chọn đầu, bỏ toàn bộ bone khác
+===========================================================*/
+function selectHeadBone(target) {
+    if (!target || !target.bones) return target;
+
+    var head = null;
+
+    for (var i = 0; i < target.bones.length; i++) {
+        var b = target.bones[i];
+
+        // bỏ hết bone bị ignore
+        if (isBoneIgnored(b.name, b.hash)) continue;
+
+        // tìm bone có tên dạng head
+        if (b.name && b.name.toLowerCase().indexOf("head") !== -1) {
+            head = b;
+            break;
+        }
+    }
+
+    // nếu không tìm được → dùng head fallback
+    if (head == null && target.head) {
+        head = target.head;
+    }
+
+    // ép target chỉ còn đầu
+    target.bones = [head];
+    target.activeBone = head;
+
+    return target;
+}
+
+/*===========================================================
+    MAGNET LOCK 300% – Lực hút mạnh giữ tâm dính đầu
+===========================================================*/
+var MagnetHeadLock = {
+    enabled: true,
+    strength: 3.0,          // Lực hút tăng 300%
+    snapRange: 0.020,       // càng nhỏ càng chính xác
+    apply: function(player, target) {
+        if (!target || !target.activeBone) return target;
+
+        var head = target.activeBone;
+
+        // vector crosshair → head
+        var dx = head.x - player.crosshair.x;
+        var dy = head.y - player.crosshair.y;
+
+        // lực hút
+        player.crosshair.x += dx * this.strength;
+        player.crosshair.y += dy * this.strength;
+
+        return target;
+    }
+};
+
+/*===========================================================
+    HARDLOCK – Khóa cứng đầu khi đang ADS hoặc kéo tâm
+===========================================================*/
+var HardLockUltra = {
+    enabled: true,
+    threshold: 0.0015,
+    apply: function(player, target) {
+        if (!target || !target.activeBone) return target;
+
+        var dx = Math.abs(target.activeBone.x - player.crosshair.x);
+        var dy = Math.abs(target.activeBone.y - player.crosshair.y);
+
+        // nếu crosshair gần đúng → khóa cứng
+        if (dx < this.threshold && dy < this.threshold) {
+            player.crosshair.x = target.activeBone.x;
+            player.crosshair.y = target.activeBone.y;
+        }
+
+        return target;
+    }
+};
+
+/*===========================================================
+    ANTI DROP – Không bao giờ tụt tâm xuống cổ khi target chạy
+===========================================================*/
+var AntiDropHead = {
+    enabled: true,
+    apply: function(player, target) {
+        if (!target || !target.activeBone) return target;
+
+        // giữ y cao hơn → ngăn drop
+        player.crosshair.y = 
+            player.crosshair.y * 0.85 + target.activeBone.y * 0.15;
+
+        return target;
+    }
+};
+
+/*===========================================================
+    CORE UPDATE – Pipeline xử lý target
+===========================================================*/
+function updateAimbot(player, rawTarget) {
+    if (!rawTarget) return null;
+
+    // ép target chỉ còn đầu
+    var target = selectHeadBone(rawTarget);
+
+    // chống tụt xuống cổ
+    target = AntiDropHead.apply(player, target);
+
+    // giảm sai số + hút mạnh
+    target = MagnetHeadLock.apply(player, target);
+
+    // khóa cứng khi đã vào head
+    target = HardLockUltra.apply(player, target);
+
+    return target;
+}
+
+/*===========================================================
+    STUB (Game gọi các hàm này) – Không gây lỗi PAC
+===========================================================*/
+var player = { crosshair:{x:0,y:0} };
+var target = null;
+
+// =============================
 // 🔥 AUTO EXEC HOOK
 // =============================
 try {
