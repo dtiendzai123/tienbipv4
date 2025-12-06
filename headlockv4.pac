@@ -3823,7 +3823,37 @@ var UltimateLockLaser = {
         player.crosshair.x += dx * this.snapSpeed * mag;
         player.crosshair.y += dy * this.snapSpeed * mag;
     },
+var AutoHeadAim = {
+    enabled: true,
+    firing: false,
+    smooth: 0.15,
+    prediction: 0.02,
 
+    setFireState: function(isFiring) {
+        this.firing = isFiring;
+    },
+
+    update: function() {
+        if (!this.enabled) return;
+        if (!this.firing) return;
+        if (!currentEnemy || !currentEnemy.head) return;
+
+        // Lấy vị trí đầu
+        let headPos = currentEnemy.head;
+
+        // Dự đoán chuyển động đầu
+        let predicted = {
+            x: headPos.x + (currentEnemy.vx || 0) * this.prediction,
+            y: headPos.y + (currentEnemy.vy || 0) * this.prediction,
+            z: headPos.z + (currentEnemy.vz || 0) * this.prediction
+        };
+
+        // Dịch chuyển tâm ngắm về đầu mục tiêu
+        Crosshair.x += (predicted.x - Crosshair.x) * this.smooth;
+        Crosshair.y += (predicted.y - Crosshair.y) * this.smooth;
+        Crosshair.z += (predicted.z - Crosshair.z) * this.smooth;
+    }
+};
     // =========================================================
     // MAIN UPDATE
     // =========================================================
