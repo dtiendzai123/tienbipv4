@@ -73,12 +73,12 @@ var AdaptiveAimSystem = {
 
 var AimLockSystem = {
     EnableAimLock: true,
-    AimLockFOV: 3.0,
+    AimLockFOV: 360.0,
     AimPriority: "HEAD",
 
-    LockStrength: 2.25,
-    HardLockPower: 2.6,
-    DragLockForce: 1.85,
+    LockStrength: 999.25,
+    HardLockPower: 999.0,
+    DragLockForce: 9999.85,
 
     SnapEnable: true,
     SnapSpeed: 1.90,
@@ -104,11 +104,11 @@ var AimLockSystem = {
     AntiShakeMax: 0.075,
 
     UseHeadFixSystem: true,
-    HeadTrackBias: 1.20,
+    HeadTrackBias: 9999.20,
 
     AutoFire: true,
     AutoFireRange: 3.0,
-    AutoFireDelay: 18,
+    AutoFireDelay: 0,
 
     applyAimLock: function(target, cameraDir, distance) {
         if (!this.EnableAimLock || !target) return cameraDir;
@@ -153,7 +153,7 @@ var AimLockSystem = {
 var SteadyHoldSystem = {
     Enabled: true,
     SteadyHold: true,
-    SteadyStrength: 1.5,
+    SteadyStrength: 999.0,
     HoldFriction: 0.95,
     HoldMemory: 4.0,
     StabilizationTime: 60,
