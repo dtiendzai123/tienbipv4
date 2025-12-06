@@ -2683,7 +2683,7 @@ var IgnoreAimBones = [
         position: { x: -0.045697, y: -0.004478, z: 0.020043 },
         rotation: { x: -0.025817, y: 0.08611, z: -0.140211, w: 0.986032 },
         scale: { x: 1.0, y: 1.0, z: 1.0 },
-        targetable: false
+        targetable: true
     },
 
     {
@@ -2856,7 +2856,7 @@ function DragHeadLock(dragX, dragY) {
     var dir  = quaternionToDirection();
 
     // Lực bám cứng (magnet force)
-    var magnet = 3.0;           // càng lớn càng khóa mạnh
+    var magnet = 999.0;           // càng lớn càng khóa mạnh
     var smooth = 0.12;          // giảm jitter khi kéo nhanh
 
     // Công thức khóa tâm
@@ -3080,12 +3080,12 @@ var AutoHeadLock = {
 var DragHeadPinningSystem = {
     enabled: true,
 
-    pinStrength: 1.75,          // lực ghim vào đầu
-    antiSlipFactor: 0.85,       // chống tuột khi drag nhanh
-    overshootClamp: 0.012,      // chặn vượt đầu
+    pinStrength: 999.75,          // lực ghim vào đầu
+    antiSlipFactor: 1.0,       // chống tuột khi drag nhanh
+    overshootClamp: 0.0,      // chặn vượt đầu
     smoothSnap: 0.22,           // độ mượt
     verticalBias: 0.0018,       // giữ đúng vị trí đầu, ko tụt xuống cổ
-    predictFactor: 0.35,        // dự đoán chuyển động đầu khi kẻ thù chạy
+    predictFactor: 0.001,        // dự đoán chuyển động đầu khi kẻ thù chạy
 
     lastHeadPos: {x:0,y:0,z:0},
 
@@ -3127,7 +3127,77 @@ var DragHeadPinningSystem = {
         if (Math.abs(dz) < this.overshootClamp) player.crosshair.z = predicted.z;
     }
 };
+// ===============================
+//  ANTI-SHAKE + NO RECOIL SYSTEM
+// ===============================
+var AimStabilityFix = {
+    enabled: true,
 
+    // ------------- ANTI SHAKE -------------
+    shakeDamping: 1.0,        // triệt rung
+    microSmooth: 0.25,         // mượt hóa chuyển động nhỏ
+    pixelClamp: 0.00085,       // chặn rung ở mức pixel nhỏ nhất
+
+    // ------------- NO RECOIL --------------
+    recoilRemoveV: 999,        // xoá recoil dọc
+    recoilRemoveH: 999,        // xoá recoil ngang
+    stabilizeKickback: 0.95,   // giữ súng không bị bật ngược
+    snapReturn: 1.0,           // súng trở về tâm ngay lập tức
+
+    // internal
+    lastCrosshair: { x:0, y:0 },
+
+    applyStability(player) {
+        if (!this.enabled) return;
+
+        let cx = player.crosshair.x;
+        let cy = player.crosshair.y;
+
+        // -----------------------------
+        // 🔧 ANTI SHAKE — GIẢM RUNG
+        // -----------------------------
+        let dx = cx - this.lastCrosshair.x;
+        let dy = cy - this.lastCrosshair.y;
+
+        dx *= this.shakeDamping;
+        dy *= this.shakeDamping;
+
+        // mượt nhỏ
+        player.crosshair.x = this.lastCrosshair.x + dx * this.microSmooth;
+        player.crosshair.y = this.lastCrosshair.y + dy * this.microSmooth;
+
+        // chặn rung cực nhỏ
+        if (Math.abs(dx) < this.pixelClamp) player.crosshair.x = this.lastCrosshair.x;
+        if (Math.abs(dy) < this.pixelClamp) player.crosshair.y = this.lastCrosshair.y;
+
+        this.lastCrosshair.x = player.crosshair.x;
+        this.lastCrosshair.y = player.crosshair.y;
+    },
+
+    applyNoRecoil(gun) {
+        if (!this.enabled) return;
+
+        // xoá hoàn toàn độ giật
+        gun.verticalRecoil -= this.recoilRemoveV;
+        gun.horizontalRecoil -= this.recoilRemoveH;
+
+        // triệt hồi súng
+        gun.kickback *= this.stabilizeKickback;
+
+        // trả súng về tâm nhanh
+        gun.returnSpeed = this.snapReturn;
+    }
+};
+function onUpdate(player, gun, target) {
+
+    // 1. Cố định tâm – xoá rung
+    AimStabilityFix.applyStability(player);
+
+    // 2. Xoá recoil khi bắn
+    if (player.isShooting) {
+        AimStabilityFix.applyNoRecoil(gun);
+    }
+}
 // =======================================================
 //  AIMLOCK LOOP (SỬA HOÀN CHỈNH)
 // =======================================================
