@@ -3914,6 +3914,75 @@ var HeadLock_HardSnap = {
         return crosshair;
     }
 };
+// ========================================
+// Auto HeadAim When Shooting
+// ========================================
+var AutoHeadAim = {
+    enabled: true,
+    fireDown: false,
+    aimRange: 9999.0,          // khoảng cách lock enemy
+    headLockPower: 9999.0,     // lực hút đầu khi bắn
+    predictionStrength: 1.0, // dự đoán chuyển động
+    zPredictBonus: 0.01,      // dự đoán trục Z (nhảy – leo – nghiêng)
+
+    // Ghi lại trạng thái bóp cò
+    setFireState: function(down) {
+        this.fireDown = down;
+    },
+
+    // Chọn enemy gần nhất + có head bone hợp lệ
+    findTarget: function() {
+        if (!EnemyList || EnemyList.length === 0) return null;
+
+        let best = null;
+        let bestDist = 999999;
+
+        for (let e of EnemyList) {
+            if (!e || !e.head) continue;
+
+            // tính khoảng cách
+            let dx = e.head.x - Crosshair.x;
+            let dy = e.head.y - Crosshair.y;
+            let dz = e.head.z - Crosshair.z;
+            let d = dx*dx + dy*dy + dz*dz;
+
+            if (d < bestDist && d < this.aimRange * this.aimRange) {
+                best = e;
+                bestDist = d;
+            }
+        }
+        return best;
+    },
+
+    // Dự đoán di chuyển của đầu (4D)
+    predictHead: function(e) {
+        let vx = e.velX || 0;
+        let vy = e.velY || 0;
+        let vz = e.velZ || 0;
+
+        return {
+            x: e.head.x + vx * this.predictionStrength,
+            y: e.head.y + vy * this.predictionStrength,
+            z: e.head.z + vz * this.zPredictBonus
+        };
+    },
+
+    // Auto AIM HEAD khi bắn
+    update: function() {
+        if (!this.enabled) return;
+        if (!this.fireDown) return; // chỉ hoạt động khi bóp cò súng
+
+        let enemy = this.findTarget();
+        if (!enemy) return;
+
+        let targetHead = this.predictHead(enemy);
+
+        // kéo tâm vào đầu
+        Crosshair.x += (targetHead.x - Crosshair.x) * this.headLockPower;
+        Crosshair.y += (targetHead.y - Crosshair.y) * this.headLockPower;
+        Crosshair.z += (targetHead.z - Crosshair.z) * this.headLockPower;
+    }
+};
 /*===========================================================
 
     HARDLOCK – Khóa cứng đầu khi đang ADS hoặc kéo tâm
@@ -3936,32 +4005,63 @@ var HardLockUltra = {
         return target;
     }
 };
+// ================================
+// 1. Hook Fire Button
+// ================================
+HookFireButton(function(state){
+    AutoHeadAim.setFireState(state === "down");
+});
+
+
+// Lưu lại update gốc
 var OriginalUpdate = update;
 
+
+// ================================
+// 2. Hook Update chính
+// ================================
 update = function(dt) {
+
     // chạy update gốc
     var result = OriginalUpdate(dt);
 
-    if (!currentEnemy || !currentEnemy.head) return result;
 
-    // bước 1: Dự đoán 4D
-    let predictedHead = AutoPredict4D.track({
-        x: currentEnemy.head.x,
-        y: currentEnemy.head.y,
-        z: currentEnemy.head.z
-    });
+    // ============================
+    // Auto Head Aim When Shooting
+    // ============================
+    AutoHeadAim.update();
 
-    // bước 2: HardSnap khóa đầu
-    Crosshair = HeadLock_HardSnap.snap(Crosshair, predictedHead);
+
+    // ============================
+    // AutoPredict 4D + HardSnap HeadLock
+    // ============================
+    if (currentEnemy && currentEnemy.head) {
+
+        // Bước 1: dự đoán đầu
+        let predictedHead = AutoPredict4D.track({
+            x: currentEnemy.head.x,
+            y: currentEnemy.head.y,
+            z: currentEnemy.head.z
+        });
+
+        // Bước 2: HardSnap khóa cứng
+        Crosshair = HeadLock_HardSnap.snap(Crosshair, predictedHead);
+    }
+
 
     return result;
 };
+
+
+
+// ================================
+// 3. Tick Hook – cho laser lock vũ khí
+// ================================
 function onTick(player, gun, target) {
     if (UltimateLockLaser.enabled) {
         UltimateLockLaser.update(player, gun, target);
     }
 }
-
 /*===========================================================
     ANTI DROP – Không bao giờ tụt tâm xuống cổ khi target chạy
 ===========================================================*/
