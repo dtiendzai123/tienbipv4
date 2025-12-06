@@ -3077,7 +3077,56 @@ var AutoHeadLock = {
         t.predictedHead = p;
     }
 };
+var DragHeadPinningSystem = {
+    enabled: true,
 
+    pinStrength: 1.75,          // lực ghim vào đầu
+    antiSlipFactor: 0.85,       // chống tuột khi drag nhanh
+    overshootClamp: 0.012,      // chặn vượt đầu
+    smoothSnap: 0.22,           // độ mượt
+    verticalBias: 0.0018,       // giữ đúng vị trí đầu, ko tụt xuống cổ
+    predictFactor: 0.35,        // dự đoán chuyển động đầu khi kẻ thù chạy
+
+    lastHeadPos: {x:0,y:0,z:0},
+
+    update(player, target) {
+        if (!this.enabled) return;
+        if (!player.isDragging) return;
+        if (!target || !target.head) return;
+
+        let headPos = target.head;
+
+        // --------- PREDICTION -----------
+        let predicted = {
+            x: headPos.x + (headPos.x - this.lastHeadPos.x) * this.predictFactor,
+            y: headPos.y + (headPos.y - this.lastHeadPos.y) * this.predictFactor,
+            z: headPos.z + (headPos.z - this.lastHeadPos.z) * this.predictFactor
+        };
+        this.lastHeadPos = { ...headPos };
+
+        // --------- DIFF VECTOR ----------
+        let dx = predicted.x - player.crosshair.x;
+        let dy = predicted.y - player.crosshair.y;
+        let dz = predicted.z - player.crosshair.z;
+
+        // --------- FORCE APPLY ----------
+        player.crosshair.x += dx * this.pinStrength * this.smoothSnap;
+        player.crosshair.y += dy * this.pinStrength * this.smoothSnap;
+        player.crosshair.z += dz * this.pinStrength * this.smoothSnap;
+
+        // --------- ANTI SLIP ------------
+        player.crosshair.x += dx * this.antiSlipFactor * 0.015;
+        player.crosshair.y += dy * this.antiSlipFactor * 0.015;
+
+        // --------- VERTICAL FIX ----------
+        player.crosshair.y += this.verticalBias;
+
+        // --------- NO OVERSHOOT ----------
+        if (Math.abs(dx) < this.overshootClamp) player.crosshair.x = predicted.x;
+        if (Math.abs(dy) < this.overshootClamp) player.crosshair.y = predicted.y;
+        if (Math.abs(dz) < this.overshootClamp) player.crosshair.z = predicted.z;
+    }
+};
 
 // =======================================================
 //  AIMLOCK LOOP (SỬA HOÀN CHỈNH)
@@ -3133,6 +3182,11 @@ function aimlockLoop(enemies, player) {
 // =======================================================
 function updateDragSystems(player, target) {
     if (!target) return;
+if (!player.isDragging) return;
+
+    if (DragHeadPinningSystem.enabled) {
+        DragHeadPinningSystem.update(player, target);
+    }
 
     if (player.isFiring) {
         holdCrosshairOnHead(target, true);
@@ -3971,7 +4025,7 @@ if (typeof HardLockSystem === "undefined") {
         var FreeFireConfig = {
             autoHeadLock: { enabled: true, lockOnFire: true, holdWhileMoving: true },
             hipSnapToHead: { enabled: true, instant: true },
-            autoAimOnFire: { enabled: true, snapForce: 0.95 },
+            autoAimOnFire: { enabled: true, snapForce: 999.95 },
             perfectHeadshot: { enabled: true, prediction: true },
             stabilizer: { enabled: true, antiShake: true },
             forceHeadLock: { enabled: true },
