@@ -3722,8 +3722,200 @@ var MagnetHeadLock = {
         return target;
     }
 };
+// =============================================================
+//   ⚡ ULTIMATE LOCK + LASER SHOT SYSTEM (FULL PAC MODULE)
+//   - 0 Giật Súng (Instant Laser)
+//   - 0 Rung Tâm Ngắm
+//   - Hút Đầu 300% (Dynamic Magnet)
+//   - Snap Head Cứng Không Lệch
+//   - Bám Đầu Khi Địch Chạy Nhanh
+// =============================================================
+var UltimateLockLaser = {
+    enabled: true,
 
+    // ===== NO RECOIL INSTANT LASER =====
+    noRecoil_V: 99999,
+    noRecoil_H: 99999,
+    kickCancel: 1.0,
+    returnForce: 1.0,
+    shakeZero: 0.0,
+
+    // ===== STABILITY (KHÔNG RUNG) =====
+    damping: 0.92,
+    microSmooth: 0.33,
+    clampPx: 0.0008,
+    lastX: 0,
+    lastY: 0,
+
+    // ===== MAGNET HEAD MODE =====
+    magnetStrength: 5.5,        // lực hút chính
+    closeBoost: 7.5,            // buff khi gần đầu
+    prediction: 0.55,
+    snapSpeed: 0.9,
+    snapRange: 0.043,
+
+    // =========================================================
+    // XỬ LÝ NO RECOIL (LASER)
+    // =========================================================
+    applyNoRecoil(gun, player) {
+        gun.verticalRecoil = 0;
+        gun.horizontalRecoil = 0;
+
+        gun.kickback *= this.kickCancel;
+        gun.returnSpeed = this.returnForce;
+
+        player.crosshairShake = this.shakeZero;
+    },
+
+    // =========================================================
+    // GIỮ TÂM – KHÔNG BAO GIỜ RUNG
+    // =========================================================
+    stabilize(player) {
+        let dx = player.crosshair.x - this.lastX;
+        let dy = player.crosshair.y - this.lastY;
+
+        dx *= this.damping;
+        dy *= this.damping;
+
+        player.crosshair.x = this.lastX + dx * this.microSmooth;
+        player.crosshair.y = this.lastY + dy * this.microSmooth;
+
+        // chặn rung pixel nhỏ
+        if (Math.abs(dx) < this.clampPx) player.crosshair.x = this.lastX;
+        if (Math.abs(dy) < this.clampPx) player.crosshair.y = this.lastY;
+
+        this.lastX = player.crosshair.x;
+        this.lastY = player.crosshair.y;
+    },
+
+    // =========================================================
+    // HEAD MAGNET – HÚT ĐẦU 300%
+    // =========================================================
+    magnet(player, target) {
+        if (!target) return;
+
+        let hx = target.head.x;
+        let hy = target.head.y;
+
+        let dx = hx - player.crosshair.x;
+        let dy = hy - player.crosshair.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        // dự đoán chuyển độngenemy
+        let px = hx + target.velocity.x * this.prediction;
+        let py = hy + target.velocity.y * this.prediction;
+
+        dx = px - player.crosshair.x;
+        dy = py - player.crosshair.y;
+
+        // nếu gần → snap cứng vào đầu
+        if (dist < this.snapRange) {
+            player.crosshair.x = hx;
+            player.crosshair.y = hy;
+            return;
+        }
+
+        // buff lực hút khi gần
+        let mag = this.magnetStrength;
+        if (dist < 0.03) mag *= this.closeBoost;
+
+        // hút mượt nhưng cực nhanh
+        player.crosshair.x += dx * this.snapSpeed * mag;
+        player.crosshair.y += dy * this.snapSpeed * mag;
+    },
+
+    // =========================================================
+    // MAIN UPDATE
+    // =========================================================
+    update(player, gun, target) {
+        if (!this.enabled) return;
+
+        // 1. Không giật (laser)
+        if (player.isShooting) this.applyNoRecoil(gun, player);
+
+        // 2. Không rung (giữ tâm)
+        this.stabilize(player);
+
+        // 3. Hút đầu mạnh
+        this.magnet(player, target);
+    }
+};
+var AutoPredict4D = {
+    enabled: true,
+    sampleCount: 6,
+    zDepthBoost: 1.35,       // tăng dự đoán trục Z
+    xyPredictStrength: 1.2,
+    velocityPredictScale: 0.9,
+    smoothing: 0.25,
+    lastPositions: [],
+
+    track: function(headPos) {
+        if (!this.enabled || !headPos) return headPos;
+
+        this.lastPositions.push({ 
+            x: headPos.x, 
+            y: headPos.y, 
+            z: headPos.z 
+        });
+
+        if (this.lastPositions.length > this.sampleCount) {
+            this.lastPositions.shift();
+        }
+
+        if (this.lastPositions.length < 2) return headPos;
+
+        let dx = headPos.x - this.lastPositions[0].x;
+        let dy = headPos.y - this.lastPositions[0].y;
+        let dz = headPos.z - this.lastPositions[0].z;
+
+        let predictPos = {
+            x: headPos.x + dx * this.xyPredictStrength,
+            y: headPos.y + dy * this.xyPredictStrength,
+            z: headPos.z + dz * this.zDepthBoost
+        };
+
+        // làm mượt 4D
+        headPos.x += (predictPos.x - headPos.x) * this.smoothing;
+        headPos.y += (predictPos.y - headPos.y) * this.smoothing;
+        headPos.z += (predictPos.z - headPos.z) * this.smoothing;
+
+        return headPos;
+    }
+};
+var HeadLock_HardSnap = {
+    enabled: true,
+    snapStrength: 1.0,         // snap 100%
+    magnetBoost: 9999,         // hút đầu tuyệt đối
+    ignoreJitter: true,
+    threshold: 0.000001,       // giới hạn lệch gần = 0
+    lastHead: null,
+
+    lock: function(crosshair, head) {
+        if (!this.enabled || !head) return crosshair;
+
+        // loại bỏ dữ liệu jitter nhỏ (anti-jitter)
+        if (this.ignoreJitter && this.lastHead) {
+            if (Math.abs(head.x - this.lastHead.x) < this.threshold) head.x = this.lastHead.x;
+            if (Math.abs(head.y - this.lastHead.y) < this.threshold) head.y = this.lastHead.y;
+            if (Math.abs(head.z - this.lastHead.z) < this.threshold) head.z = this.lastHead.z;
+        }
+        this.lastHead = { x: head.x, y: head.y, z: head.z };
+
+        // HardSnap: di chuyển crosshair trực tiếp vào đầu
+        crosshair.x += (head.x - crosshair.x) * this.snapStrength;
+        crosshair.y += (head.y - crosshair.y) * this.snapStrength;
+        crosshair.z += (head.z - crosshair.z) * this.snapStrength;
+
+        // Mode "keo 502" — StickToHead hoàn toàn
+        crosshair.x = head.x;
+        crosshair.y = head.y;
+        crosshair.z = head.z;
+
+        return crosshair;
+    }
+};
 /*===========================================================
+
     HARDLOCK – Khóa cứng đầu khi đang ADS hoặc kéo tâm
 ===========================================================*/
 var HardLockUltra = {
@@ -3744,6 +3936,31 @@ var HardLockUltra = {
         return target;
     }
 };
+var OriginalUpdate = update;
+
+update = function(dt) {
+    // chạy update gốc
+    var result = OriginalUpdate(dt);
+
+    if (!currentEnemy || !currentEnemy.head) return result;
+
+    // bước 1: Dự đoán 4D
+    let predictedHead = AutoPredict4D.track({
+        x: currentEnemy.head.x,
+        y: currentEnemy.head.y,
+        z: currentEnemy.head.z
+    });
+
+    // bước 2: HardSnap khóa đầu
+    Crosshair = HeadLock_HardSnap.snap(Crosshair, predictedHead);
+
+    return result;
+};
+function onTick(player, gun, target) {
+    if (UltimateLockLaser.enabled) {
+        UltimateLockLaser.update(player, gun, target);
+    }
+}
 
 /*===========================================================
     ANTI DROP – Không bao giờ tụt tâm xuống cổ khi target chạy
