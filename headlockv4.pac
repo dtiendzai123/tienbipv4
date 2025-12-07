@@ -3828,7 +3828,9 @@ var AutoHeadAim = {
     firing: false,
     smooth: 0.15,
     prediction: 0.02,
-
+  maxStep: 0.035,          // NGĂN LỐ (overshoot)
+    stopRadius: 0.0025,      // khi gần head thì dừng chính xác
+    overshootCorrect: 0.75,  // lực kéo ngược nếu vượt qua đầu
     setFireState: function(isFiring) {
         this.firing = isFiring;
     },
@@ -3854,7 +3856,66 @@ var AutoHeadAim = {
         Crosshair.z += (predicted.z - Crosshair.z) * this.smooth;
     }
 };
-    // =========================================================
+var AntiOvershootHead = {
+    enabled: true,
+    overshootLimit: 0.0009,      // không được vượt quá vị trí đầu
+    clampStrength: 0.65,         // lực ghìm lại
+    apply: function(crosshair, head) {
+
+        let dx = head.x - crosshair.x;
+        let dy = head.y - crosshair.y;
+        let dz = head.z - crosshair.z;
+
+        // Nếu chênh lệch rất nhỏ → không cần xử lý
+        if (Math.abs(dx) < this.overshootLimit &&
+            Math.abs(dy) < this.overshootLimit &&
+            Math.abs(dz) < this.overshootLimit) return crosshair;
+
+        // Nếu đang vượt quá đầu → kẹp lại
+        crosshair.x += dx * this.clampStrength;
+        crosshair.y += dy * this.clampStrength;
+        crosshair.z += dz * this.clampStrength;
+
+        return crosshair;
+    }
+};
+var AutoHeadAimLock = {
+    enabled: true,
+    firing: false,
+    smooth: 0.15,
+    prediction: 0.45,
+
+    setFireState: function(isFiring) {
+        this.firing = isFiring;
+    },
+
+    update: function() {
+        if (!this.enabled) return;
+        if (!this.firing) return;
+        if (!currentEnemy || !currentEnemy.head) return;
+
+        // Lấy vị trí đầu
+        let head = currentEnemy.head;
+
+        // Dự đoán chuyển động
+        let predicted = {
+            x: head.x + (currentEnemy.vx || 0) * this.prediction,
+            y: head.y + (currentEnemy.vy || 0) * this.prediction,
+            z: head.z + (currentEnemy.vz || 0) * this.prediction
+        };
+
+        // Mượt
+        Crosshair.x += (predicted.x - Crosshair.x) * this.smooth;
+        Crosshair.y += (predicted.y - Crosshair.y) * this.smooth;
+        Crosshair.z += (predicted.z - Crosshair.z) * this.smooth;
+
+        // ❗ KHÔNG BAO GIỜ LỐ ĐẦU
+        if (AntiOvershootHead.enabled) {
+            AntiOvershootHead.apply(Crosshair, predicted);
+        }
+    }
+};
+// =========================================================
     // MAIN UPDATE
     // =========================================================
     update(player, gun, target) {
