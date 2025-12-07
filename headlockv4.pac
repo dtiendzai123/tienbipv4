@@ -107,7 +107,7 @@ var AimLockSystem = {
     HeadTrackBias: 9999.20,
 
     AutoFire: true,
-    AutoFireRange: 3.0,
+    AutoFireRange: 999.0,
     AutoFireDelay: 0,
 
     applyAimLock: function(target, cameraDir, distance) {
@@ -2683,7 +2683,7 @@ var IgnoreAimBones = [
         position: { x: -0.045697, y: -0.004478, z: 0.020043 },
         rotation: { x: -0.025817, y: 0.08611, z: -0.140211, w: 0.986032 },
         scale: { x: 1.0, y: 1.0, z: 1.0 },
-        targetable: false
+        targetable: true
     },
 
     {
