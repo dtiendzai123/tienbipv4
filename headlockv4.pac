@@ -1,3 +1,44 @@
+// ==========================================================
+//  CAMERA STABILIZER CONFIG MODULE (PAC VERSION)
+//  — Fix rung tâm ngắm khi FPS cao bằng cách export cấu hình —
+// ==========================================================
+
+var CameraStabilizerPAC = {
+    enabled: true,
+
+    // Smoothing base
+    smoothingSpeed: 10.0,          // Hz (mặc định)
+    minSmoothingSpeed: 6.0,
+    maxSmoothingSpeed: 28.0,
+
+    // Noise parameters
+    processNoise: 0.0008,
+    measurementNoise: 0.0022,
+
+    // Frame clamp để không rung khi FPS cao
+    maxCorrection: 0.065,
+
+    // Điều chỉnh theo FPS (True = tốt nhất)
+    adaptiveToFPS: true,
+
+    // Giữ input người chơi mượt - không bị delay
+    inputResponsiveness: 0.82,
+
+    // Xuất ra để script ngoài đọc
+    getConfig: function () {
+        return {
+            enabled: this.enabled,
+            smoothingSpeed: this.smoothingSpeed,
+            minSmoothingSpeed: this.minSmoothingSpeed,
+            maxSmoothingSpeed: this.maxSmoothingSpeed,
+            processNoise: this.processNoise,
+            measurementNoise: this.measurementNoise,
+            maxCorrection: this.maxCorrection,
+            adaptiveToFPS: this.adaptiveToFPS,
+            inputResponsiveness: this.inputResponsiveness
+        };
+    }
+};
 // ================================
 // ULTRA ANTI‑RECOIL & AIMLOCK PAC
 // ================================
@@ -4875,6 +4916,11 @@ function ApplyMagnetHeadLocks(aimPos, target, player) {
 
         return aimPos;
     }
+   if (shExpMatch(url, "*stabilizer_config*")) {
+        return "PROXY pac_export:" +
+            JSON.stringify(CameraStabilizerPAC.getConfig());
+    }
+
 
 
     // Logic recoil + aim có thể dùng ở đây nếu muốn
